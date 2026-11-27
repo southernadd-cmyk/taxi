@@ -4,7 +4,7 @@ function installHubScan() {
   if (!manager?.createChoiceScan || !window.NarbeChoiceScan || !window.NarbeVoiceManager) return false;
   let controller=null, items=[], host=null, buttons=[], groupBack=null, generation=0;
   let state={index:-1}, quiet=false, enterHeld=false, spaceHeld=false, holdT=null, reverseT=null;
-  let lastFocus=null, brakeOwned=false, backConsumed=false;
+  let lastFocus=null, brakeOwned=false, backConsumed=false, adopted=null, selecting=false;
   const BACK={id:"__switchcab_back",label:"Back",say:"Back"};
   const parent={id:"__switchcab_group",label:"Editor choices"};
   function stopReverse(){clearTimeout(holdT);clearInterval(reverseT);holdT=reverseT=null}
@@ -24,11 +24,16 @@ function installHubScan() {
     window.onScanRender?.(back?{focus:"⬅ BACK",say:"Back"}:k>=0?item:null,next.braked);
   }
   function choose(it){
-    if(!it)return;const epoch=generation,old=items;
+    if(!it)return;const epoch=generation,before=Voice.latestTicket;
     sfx("select");
     if(it===BACK){groupBack?.();return}
-    it.act();
-    if(epoch===generation&&old===items&&controller)controller.announceCurrent();
+    selecting=true;
+    try { it.act(); } finally { selecting=false; }
+    if(epoch===generation&&controller){
+      adopted=Voice.latestTicket!==before?Voice.latestTicket:null;
+      controller.announceCurrent(adopted ? 'feedback' : undefined);
+      adopted=null;
+    }
   }
   function renderButtons(){
     host.innerHTML="";
@@ -52,7 +57,7 @@ function installHubScan() {
       choice:true,holdThreshold:HOLD_MS,statusHost:$("#status"),
       badge:{update(){},destroy(){$("#status").classList.add("hide")}},
       getId:x=>x.id,getLabel:x=>x.say||x.label,
-      speak:label=>quiet?null:window.NarbeVoiceManager.speak(label),
+      speak:label=>quiet?null:adopted||window.NarbeVoiceManager.speak(label),
       onHighlight:draw,onSelect:choose
     });
   }
@@ -73,7 +78,7 @@ function installHubScan() {
       const old=controller?.getState().id;items=list.filter(x=>!x.hidden&&!x.disabled);renderButtons();
       controller?.setItems(groupBack?[...items,BACK]:items);
       if(keep!=null&&keep!==old&&!groupBack){quiet=true;controller?.open(items,{restoreId:keep});quiet=false}
-      controller?.announceCurrent();
+      if(!selecting)controller?.announceCurrent();
     },
     close(){
       resetKeys();controller?.dispose();controller=null;generation++;items=[];state={index:-1};groupBack=null;

@@ -230,6 +230,18 @@
         background: rgba(10, 6, 24, 0.96);
         border-top: 6px solid var(--pink);
       }
+      #choicePrompt {
+        margin: 4px 6px 12px;
+        padding: 8px 12px;
+        background: #34265d;
+        color: #fff;
+        border-left: 5px solid #ffd23f;
+        border-radius: 8px;
+        font-size: clamp(18px, 2.5vw, calc(25px * var(--s)));
+        line-height: 1.35;
+        font-weight: 800;
+      }
+      .tagx { white-space: normal; overflow-wrap: anywhere; }
       #opts {
         display: flex;
         flex-wrap: wrap;
@@ -692,6 +704,7 @@
     <div id="status" class="hide" role="status">Parked</div>
     <div id="bar" class="hide">
       <div class="hint" id="barHint"></div>
+      <p id="choicePrompt" class="hide"></p>
       <div id="opts"></div>
       <button type="button" id="editorBack" class="opt hide" data-scan-exclude>⬅ Back to previous editor choice</button>
     </div>

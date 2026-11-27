@@ -24,7 +24,12 @@ function startNewShift(k, levelId, back) {
 function hideMenu() {
   $("#menu").classList.add("hide");
 }
-function showBar(items, speech) {
+function showBar(items, speech, detail = "") {
+  const prompt = $("#choicePrompt");
+  if (prompt) {
+    prompt.textContent = detail;
+    prompt.classList.toggle("hide", !detail);
+  }
   $("#bar").classList.remove("hide");
   hints();
   Scan.open(items, $("#opts"), speech);

@@ -47,6 +47,25 @@ const assert = require("node:assert/strict");
     await menu("City editor");await menu("Edit "+city.name);
     assert.equal(await page.evaluate(()=>level.blocks[63]),"P");
     assert.deepEqual(await page.evaluate(()=>level.start),[8,8]);
+    // Trigger a known dare without relying on random passenger offers.
+    await opt("Done. Leave the editor");
+    await menu("Back to main menu");
+    await menu("Start a taxi shift");
+    await menu("Taxi shift. Choose a city");
+    await page.locator("#menuList button").first().click();
+    await page.evaluate(()=>{
+      const passenger={dest:[4,4],destName:"the park",pay:100,patience:null,dare:null};
+      shift.onboard=[passenger];
+      pendingDares=[{p:passenger,dare:{type:"coins",need:10,have:0,text:"Grab ten coins before you drop me off."}}];
+      offerDare("Passenger pickup.");
+    });
+    assert.match(await page.locator("#choicePrompt").innerText(),/Grab ten coins.*double.*half/i);
+    await opt("Hear dare again");
+    assert.equal(await page.locator("#choicePrompt").isVisible(),true);
+    await opt("Accept the dare");
+    assert.equal(await page.locator("#choicePrompt").isVisible(),false);
+    assert.match(await page.locator("#missionText").innerText(),/Collect ten coins.*0\/10/);
+    assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem("switchcity-game3")).shift.onboard[0].dare.type),"coins");
     assert.deepEqual(errors,[],"uncaught browser errors");
     await page.screenshot({path:"browser-smoke.png"});
     console.log("Browser smoke: Enter-only practice, city edit/save/test/reload passed.");

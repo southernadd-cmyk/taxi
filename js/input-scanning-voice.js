@@ -373,7 +373,7 @@ const Scan = (() => {
       if (items.length) schedule();
     },
     spaceDown() {
-      if (!items.length) return;
+      if (!items.length || enterHeld) return;
       const a = acc();
       if (a.auto && a.brake) {
         if (parked || i === -1 || atBack()) return;
@@ -396,7 +396,7 @@ const Scan = (() => {
       }, HOLD_MS);
     },
     spaceUp() {
-      if (!items.length) return;
+      if (!items.length || enterHeld) return;
       const a = acc();
       if (a.auto && a.brake) {
         if (brakeResume) {
@@ -419,6 +419,7 @@ const Scan = (() => {
     },
     enterDown() {
       if (!items.length) return;
+      cancelHold();
       enterHeld = true;
       clearTimers();
     },

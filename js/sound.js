@@ -403,6 +403,12 @@ function buildMusic() {
 }
 buildSounds();
 function sfx(name, vol = 0.8) {
+  if (window.SafeAudio && game.sfx && SOUNDS[name]) {
+    const key = "switchcab-" + name;
+    SafeAudio.preload(key, SOUNDS[name]);
+    SafeAudio.play(key, vol);
+    return;
+  }
   if (!game.sfx || !SOUNDS[name]) return;
   try {
     const a = new Audio(SOUNDS[name]);

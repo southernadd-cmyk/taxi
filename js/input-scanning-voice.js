@@ -150,7 +150,7 @@ const Voice = {
         try {
           const ticket = M.speak(text);
           if (ticket?.finished) Promise.resolve(ticket.finished).then(
-            result => finish(result?.reason || "ended"), () => finish("error")
+            result => finish(result?.reason === "end" ? "ended" : result?.reason || "ended"), () => finish("error")
           );
         } catch (_) { finish("error"); }
         return;
@@ -176,7 +176,7 @@ const Voice = {
 };
 
 /* ======================= choice scanner (§4 contract) ======================= */
-const Scan = (() => {
+let Scan = (() => {
   // root lists: blank -1 step, parking. groups (rows): wrap through items plus one Back stop, no -1.
   let items = [],
     i = -1,
@@ -530,7 +530,7 @@ addEventListener("keydown", (e) => {
   e.preventDefault();
   if (e.repeat || keyState[k]) return;
   const now = performance.now();
-  if (now - lastAccepted < acc().sens) {
+  if (!window.NarbeScanManager && now - lastAccepted < acc().sens) {
     keyState[k] = { rejected: true };
     return;
   }

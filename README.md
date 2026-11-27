@@ -40,3 +40,8 @@ happens between turns, so the game never depends on reaction time.
   otherwise the game uses its own fallbacks.
 
 See CREDITS.md for model licences.
+
+## Benny’s Hub deployment
+Copy the game directory into `bennyshub/apps/games/SWITCHCAB/` in the Hub repository (keep the js and assets directories). When served under `/bennyshub/`, it loads the Hub's shared platform, scan controller, voice and SafeAudio modules from the same origin. The standalone GitHub Pages version keeps local preferences; cross-origin browser storage cannot share settings with the Hub. Register the game in the Hub separately. No Hub repository files are modified by this project.
+
+Editor test drives never change cash, ranks or saved rides. City import validates the grid, theme, road items and starting point, and failed writes preserve the draft. Sharing codes remains a caregiver mouse/keyboard tool behind a warning.

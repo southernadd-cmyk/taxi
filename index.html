@@ -715,7 +715,17 @@
       "use strict";
       const $ = (s) => document.querySelector(s);
     </script>
+    <script>
+      if (location.pathname.startsWith("/bennyshub/")) {
+        for (const type of ["keydown", "keyup"]) window.addEventListener(type, e => {
+          if (e.target?.closest?.("#share textarea, #share input")) e.stopImmediatePropagation();
+        }, true);
+        for (const name of ["platform","scan-status-badge","choice-scan","scan-manager","voice-manager","safe-audio"])
+          document.write('<script src="/bennyshub/shared/' + name + '.js"><' + '/script>');
+      }
+    </script>
     <script src="js/input-scanning-voice.js"></script>
+    <script src="js/hub-scan.js"></script>
     <script src="js/sound.js"></script>
     <script src="js/models.js"></script>
     <script src="js/city.js"></script>

@@ -760,6 +760,7 @@ if (motionPreference.addEventListener) motionPreference.addEventListener("change
 else if (motionPreference.addListener) motionPreference.addListener(applyMotion);
 applyMotion();
 applyUI();
+if (typeof installHubScan === 'function') installHubScan();
 hints();
 $("#menuSub").textContent = "Loading the city…";
 loadAssets().then(() => {

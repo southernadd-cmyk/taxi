@@ -33,8 +33,11 @@ function showBar(items, speech) {
 function exitGame() {
   Voice.speak("Exit game");
   if (window.parent !== window) {
+    Scan.close();
+    window.NarbeScanManager?.resetInputState?.();
+    window.SafeAudio?.stopAll?.();
     try {
-      window.parent.postMessage({ action: "focusBackButton" }, "*");
+      window.parent.postMessage({ action: "focusBackButton" }, document.referrer ? new URL(document.referrer).origin : "*");
     } catch (e) {}
     return;
   }

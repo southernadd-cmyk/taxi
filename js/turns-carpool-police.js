@@ -608,6 +608,62 @@ function danger(d) {
 }
 
 /* ---------- a turn ---------- */
+// A player may explicitly authorise a short, straight GPS run. Each block is
+// still a normal turn; recheck the route and all conditions after every block.
+function quickRouteAllowed() {
+  return mode === "play" && modeKey === "shift" && !!shift && !game.nav &&
+    !testing && !nitroArmed && !heat && !cops.length && !rival &&
+    !pendingDares.length && !shift.onboard.some(p => p.getaway || p.dare || urgency(p) <= 1) &&
+    (shift.fuel == null || shift.fuel > 10);
+}
+function quickRouteStop(x, y) {
+  return waiting.some(w => w.x === x && w.y === y) ||
+    shift.onboard.some(p => nodeEq(p.dest, x, y));
+}
+function quickRouteLength(d, destination, limit = 3) {
+  if (!quickRouteAllowed() || !destination || !Number.isInteger(d) || d < 0 || d > 3 ||
+      quickRouteStop(car.x, car.y)) return 0;
+  let x = car.x, y = car.y, facing = car.d, count = 0;
+  for (let i = 0; i < limit; i++) {
+    if (routeDir(x, y, destination[0], destination[1], facing) !== d || !canGo(x, y, d)) break;
+    if (shift.fuel != null && shift.fuel - i <= 10) break;
+    const gd = goodies[edgeKey(x, y, d)];
+    // Even used goodies may respawn during the run; leave these decisions manual.
+    if (gd) break;
+    const nx = x + DX[d], ny = y + DZ[d];
+    if (shift.onboard.some(p => p.patience != null && p.patience - i - 1 - moves(nx, ny, p.dest[0], p.dest[1]) <= 1)) break;
+    count++; x = nx; y = ny; facing = d;
+    if (quickRouteStop(x, y) || nodeEq(destination, x, y)) break;
+  }
+  return count;
+}
+function quickRouteItem(d, destination) {
+  const count = quickRouteLength(d, destination);
+  if (count < 2) return null;
+  const direction = relName(d);
+  return {
+    id: "quickRoute",
+    label: "⭐ GPS: " + direction + " · " + count + " blocks",
+    say: "GPS shortcut. " + direction + ", " + count + " blocks. Stops for changes or passenger events.",
+    focus: "⭐ GPS · " + count + " BLOCKS",
+    sound: DIRWORD[direction][2],
+    act: () => {
+      const targetNow = currentTarget();
+      if (!targetNow || !nodeEq(destination, targetNow.node[0], targetNow.node[1]) ||
+          quickRouteLength(d, destination, count) < count) return openJunction("Route changed. Choose your next move.");
+      drive(d, { d, destination: [...destination], ref: targetNow.ref, remaining: count - 1 });
+    }
+  };
+}
+function continueQuickRoute(say) {
+  const q = turn && turn.quick;
+  if (!q || q.remaining <= 0 || say.some(Boolean)) return false;
+  const now = currentTarget();
+  if (!now || now.ref !== q.ref || !nodeEq(q.destination, now.node[0], now.node[1]) ||
+      quickRouteLength(q.d, q.destination, 1) !== 1) return false;
+  drive(q.d, { ...q, remaining: q.remaining - 1 });
+  return true;
+}
 function openJunction(speech) {
   const practice = modeKey === 'practice';
   car.moving = false;
@@ -652,6 +708,8 @@ function openJunction(speech) {
       act: () => drive(o.d),
     };
   });
+  const shortcut = gps >= 0 && !practice ? quickRouteItem(gps, t) : null;
+  if (shortcut) items.unshift(shortcut);
   if (shift && seatsFree() > 0)
     waiting
       .filter((w) => w.x === car.x && w.y === car.y)
@@ -764,7 +822,7 @@ function refreshOptions(keep) {
   openJunction(" ");
   Scan.setItems(Scan.items, keep);
 }
-function drive(d) {
+function drive(d, quick = null) {
   clearTimeout(autoT);
   const segs = nitroArmed && canGo(car.x + DX[d], car.y + DZ[d], d) ? 2 : 1;
   if (segs === 2) {
@@ -772,7 +830,7 @@ function drive(d) {
     sfx("jump", 0.8);
   }
   nitroArmed = false;
-  turn = { segs, seg: 0, path: [[car.x, car.y]], nitro: segs === 2, speech: [] };
+  turn = { segs, seg: 0, path: [[car.x, car.y]], nitro: segs === 2, speech: [], quick };
   car.d = d;
   car.p = 0;
   car.moving = true;
@@ -934,7 +992,11 @@ function arrive(caught) {
   refreshMarkers();
   saveGame();
   if (shift && shift.onboard.some((p) => urgency(p) <= 1)) sfx("urgent", 0.8);
-  const speech = say.join(" ") + " " + (game.guide ? guidance() : "") + " " + takeTips();
+  // Drain queued tips once; a new event or tutorial must be heard at a junction.
+  const tips = takeTips();
+  if (!caught && !tips && continueQuickRoute(say)) return;
+  const quickFeedback = turn && turn.quick ? "GPS shortcut ended. " : "";
+  const speech = quickFeedback + say.join(" ") + " " + (game.guide ? guidance() : "") + " " + tips;
   if (pendingDares.length) offerDare(speech);
   else openJunction(speech);
 }

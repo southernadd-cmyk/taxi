@@ -19,3 +19,6 @@ All other 3D objects (people, traffic, police cars, landmarks, props) are built 
 ## Libraries and fonts
 - three.js r128 with its GLTFLoader and post-processing (bloom) scripts (MIT licence), loaded from a CDN.
 - Bungee and Nunito fonts from Google Fonts (SIL Open Font Licence).
+
+## Recorded speech
+Optional British English recordings generated with [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) (Apache-2.0 model), voice `bf_emma`. No model runs during gameplay.

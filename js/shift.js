@@ -39,6 +39,7 @@ function pauseMenu(keepId) {
         clearWaiting();
         clearCops();
         clearRoadworks();
+        if (ed?.draft) { buildLevel(ed.draft); spawnTraffic(); delete ed.draft; }
         editRoot({ keep: "test" });
       },
     });
@@ -83,7 +84,7 @@ function enterPlay(k, levelId, lvObj) {
   if (lvObj) {
     buildLevel(lvObj);
     spawnTraffic();
-  } else if (!level || level.id !== levelId) {
+  } else {
     buildLevel(findLevel(levelId));
     spawnTraffic();
   }
@@ -130,7 +131,7 @@ function start(k, levelId, lvObj) {
           earned: 0,
           bestCombo: 0,
         };
-  rollRoadworks();
+  if (testing) clearRoadworks(); else rollRoadworks();
   spawnWaiting();
   topUpPatrols();
   planCops();
@@ -144,8 +145,8 @@ function start(k, levelId, lvObj) {
         guidance(),
     );
   } else {
-    banner("Cruise", "Drive anywhere");
-    openJunction("Cruise the city. Listen for coins, ramps and crates.");
+    banner(testing ? "Test drive" : "Cruise", "Drive anywhere");
+    openJunction(testing ? "Test drive. No money or penalties. Pause to return to your city." : "Cruise the city. Listen for coins, ramps and crates.");
   }
 }
 function resume(sg) {

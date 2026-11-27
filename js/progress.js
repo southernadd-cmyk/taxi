@@ -30,6 +30,7 @@ function saveProgress() {
   store("switchcity-garage2", garage);
 }
 function earn(n) {
+  if (testing || modeKey === "practice") return;
   const before = rankOf(earned);
   cash += n;
   earned += n;

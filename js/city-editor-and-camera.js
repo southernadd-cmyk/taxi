@@ -255,7 +255,14 @@ function deleteMenu(keepId) {
   const items = customLevels().map(l => ({
     id: "d" + l.id, label: "🗑️ Delete " + l.name, say: "Delete " + l.name,
     act: () => confirmChoice("Delete " + l.name + "?", "This cannot be undone.", "Delete city",
-      () => { store("switchcity-levels", customLevels().filter(x => x.id !== l.id)); editorMenu("del"); },
+      () => {
+        if (!persistCities(customLevels().filter(x => x.id !== l.id))) {
+          showMenu("Could not delete city", "Storage is unavailable. Your city was not deleted.",
+            [{id:"back",label:"Back",say:"Back",act:()=>deleteMenu("d"+l.id)}], "Could not delete city");
+          return;
+        }
+        editorMenu("del");
+      },
       () => deleteMenu("d" + l.id)),
   }));
   items.push({ id: "back", label: "⬅️ Back", say: "Back", act: () => editorMenu("del") });
@@ -284,9 +291,9 @@ function openShare() {
       .join("\n\n") || "You have no cities yet. Paste a code here and press Import.";
   $("#shMsg").textContent = "";
 }
-$("#shCopy").onclick = () => {
-  navigator.clipboard && navigator.clipboard.writeText($("#shareText").value);
-  $("#shMsg").textContent = "Copied.";
+$("#shCopy").onclick = async () => {
+  try { await navigator.clipboard.writeText($("#shareText").value); $("#shMsg").textContent = "Copied."; }
+  catch (_) { $("#shareText").focus(); $("#shareText").select(); $("#shMsg").textContent = "Select and copy the code manually."; }
 };
 $("#shImport").onclick = () => {
   const lines = $("#shareText")
@@ -296,16 +303,11 @@ $("#shImport").onclick = () => {
   const list = customLevels();
   lines.forEach((s) => {
     try {
-      const l = dec(s);
-      if (Array.isArray(l.blocks) && l.blocks.length === B * B) {
-        l.id = "c" + Date.now() + n;
-        l.builtin = false;
-        list.push(l);
-        n++;
-      }
+      const l = validateCity(dec(s));
+      if (l) { l.id = newCityId(list); list.push(l); n++; }
     } catch (e) {}
   });
-  store("switchcity-levels", list);
+  if (n && !persistCities(list)) { $("#shMsg").textContent = "Could not save imported cities. Storage may be full."; return; }
   $("#shMsg").textContent = n ? `Imported ${n} cit${n > 1 ? "ies" : "y"}.` : "No valid code found.";
 };
 $("#shClose").onclick = () => {
@@ -313,7 +315,41 @@ $("#shClose").onclick = () => {
   editorMenu("share");
 };
 function nextName() {
-  return "My City " + (customLevels().length + 1);
+  const names = new Set(customLevels().map(l => l.name));
+  let n = 1;
+  while (names.has("My City " + n)) n++;
+  return "My City " + n;
+}
+function newCityId(list) {
+  let id;
+  do { id = "c" + Date.now() + "-" + Math.random().toString(36).slice(2, 10); }
+  while (list.some(l => l.id === id));
+  return id;
+}
+function validateCity(raw) {
+  if (!raw || !Array.isArray(raw.blocks) || raw.blocks.length !== B * B ||
+      !raw.blocks.every(k => Object.hasOwn(BLOCKS, k)) ||
+      !Object.hasOwn(PALETTES, raw.theme) ||
+      !Array.isArray(raw.start) || raw.start.length !== 2 ||
+      !raw.start.every(n => Number.isInteger(n) && n >= 0 && n < G) ||
+      !raw.segs || typeof raw.segs !== "object" || Array.isArray(raw.segs)) return null;
+  const segs = {};
+  for (const [key, value] of Object.entries(raw.segs)) {
+    if (!/^\d,\d,[12]$/.test(key) || !Object.hasOwn(GOODIES, value)) return null;
+    const [x,y,d] = key.split(",").map(Number);
+    if (x >= G || y >= G || !valid(x,y,d)) return null;
+    segs[key] = value;
+  }
+  const blocks = [...raw.blocks];
+  for (const [key, spec] of Object.entries(BLOCKS)) {
+    if (spec.unique && blocks.filter(k => k === key).length > 1) return null;
+  }
+  const name = typeof raw.name === "string" ? raw.name.replace(/[^\p{L}\p{N} .,'’_-]/gu, "").trim().slice(0, 60) : "";
+  return { name: name || "Imported city", theme: raw.theme, blocks, segs, start: [...raw.start] };
+}
+function persistCities(list) {
+  try { localStorage.setItem("switchcity-levels", JSON.stringify(list)); return true; }
+  catch (_) { return false; }
 }
 function blankLevel() {
   return {
@@ -355,6 +391,7 @@ function editRoot(arg) {
   if (playerMesh) playerMesh.visible = false;
   clearCops();
   clearWaiting();
+  playerGlow.visible = false;
   beacon.visible = false;
   routeGroup.visible = false;
   updateHud();
@@ -388,8 +425,9 @@ function editRoot(arg) {
       label: "🚗 Test drive",
       say: "Test drive",
       act: () => {
+        ed.draft = JSON.parse(JSON.stringify(level));
         testing = true;
-        start("cruise", null, level);
+        start("cruise", null, ed.draft);
       },
     },
     { id: "save", label: "💾 Save", say: "Save city", act: saveCity },
@@ -407,22 +445,21 @@ function editRoot(arg) {
 }
 function saveCity() {
   const list = customLevels();
-  if (!level.id) {
-    level.id = "c" + Date.now();
-    list.push(level);
-  } else {
-    const i = list.findIndex((l) => l.id === level.id);
-    if (i < 0) list.push(level);
-    else list[i] = level;
-  }
-  store("switchcity-levels", list);
+  const data = validateCity(level);
+  if (!data) { Voice.speak("City is invalid. Your changes have not been saved."); return false; }
+  data.id = level.id || newCityId(list);
+  const index = list.findIndex(l => l.id === data.id);
+  if (index < 0) list.push(data); else list[index] = data;
+  if (!persistCities(list)) { Voice.speak("Could not save city. Storage may be full. Your changes are still here."); return false; }
+  level.id = data.id;
   ed.dirty = false;
   sfx("score");
   Voice.speak(level.name + " saved.");
+  return true;
 }
 function leaveEditor() {
   if (!ed.dirty) {
-    editorMenu();
+    editorMenu(level.id ? "edit" + level.id : undefined);
     return;
   }
   showMenu(
@@ -435,8 +472,8 @@ function leaveEditor() {
         label: "💾  Save and leave",
         say: "Save and leave",
         act: () => {
-          saveCity();
-          editorMenu();
+          if (saveCity()) editorMenu();
+          else editRoot({ keep: "save" });
         },
       },
       { id: "lose", label: "🗑️  Leave without saving", say: "Leave without saving", act: () => confirmChoice("Discard changes?", "Unsaved changes will be lost.", "Discard changes", () => editorMenu(), leaveEditor) },

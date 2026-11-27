@@ -53,7 +53,7 @@ let rand = Math.random;
 const TIPS = load("switchcity-tips", {});
 let tipQueue = [];
 function tip(id, text) {
-  if (TIPS[id]) return;
+  if (testing || modeKey === "practice" || TIPS[id]) return;
   TIPS[id] = 1;
   store("switchcity-tips", TIPS);
   tipQueue.push("Tip: " + text);
@@ -1205,6 +1205,7 @@ function lostThem() {
   return "You lost the police! Plus 75 dollars.";
 }
 function collect(kind, amount) {
+  if (testing) return;
   const m = 1 + Math.min(4, combo) * 0.5,
     onb = shift ? Math.max(1, shift.onboard.length) : 1,
     v = Math.round(amount * m * onb);
@@ -1388,9 +1389,8 @@ function todayStr() {
   return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
 }
 function saveGame() {
-  if (modeKey === 'practice') return;
+  if (modeKey === 'practice' || testing || mode !== "play") return;
   saveProgress();
-  if (mode !== "play" || testing) return;
   store("switchcity-game3", {
     modeKey,
     levelId: level.id,

@@ -225,6 +225,8 @@ const Scan = (() => {
     host.classList.toggle("backstop", !!atBack());
     const on = host.querySelector(".on");
     if (on) on.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
+    const backButton = $("#editorBack");
+    if (backButton) { backButton.classList.toggle("hide", !group); backButton.onclick = group ? () => { resetKeys(); group.back(); } : null; }
     if (window.onScanRender)
       onScanRender(atBack() ? { focus: "⬅  BACK", say: "Back" } : i >= 0 ? items[i] : null, braked);
   }
@@ -419,6 +421,7 @@ const Scan = (() => {
         host.classList.remove("backstop");
       }
       $("#status").classList.add("hide");
+      const backButton = $("#editorBack"); if (backButton) backButton.classList.add("hide");
     },
     retime() {
       if (!acc().auto && (braked || parked)) {

@@ -100,8 +100,8 @@ window.onScanRender = (it, braked) => {
     f.textContent = it.focus || it.label || "";
     f.classList.remove("hide");
     f.classList.toggle("braked", braked);
-    if (it.hl) it.hl();
-  } else f.classList.add("hide");
+    if (it.hl) it.hl(); else hideEditorMarks();
+  } else { f.classList.add("hide"); if (mode === "editor") hideEditorMarks(); }
 };
 let bT = null;
 function banner(t, s) {
@@ -247,7 +247,7 @@ function editorMenu(keepId) {
       say: "Share codes. Needs a mouse.",
       act: shareWarning,
     },
-    { id: "back", label: "⬅️  Back", say: "Back", act: titleMenu },
+    { id: "back", label: "⬅️  Back", say: "Back", act: () => titleMenu("editor") },
   );
   showMenu("City editor", "Build your own city, then play it in any mode.", items, "City editor", keepId);
 }

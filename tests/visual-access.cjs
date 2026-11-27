@@ -95,6 +95,23 @@ function visualTests(h,input,city,cam,turns,fx,models,settings){
  hv=hud.render(true,"play","practice");assert(!hv.simple&&hv.mission.textContent==="Practice instruction","practice instructions unaffected");
  hv=hud.render(true,"editor");assert(!hv.simple&&hv.mission.innerHTML.includes("City"),"editor unaffected");
  assert(h.includes("#hud.simple-driving #mm")&&h.includes("#hud.simple-driving .pbar"),"optional map and redundant progress bar hidden");
+ const progress=fs.readFileSync(path.join(__dirname,"../js/progress.js"),"utf8");
+ const achSource=progress.slice(progress.indexOf("const ACHIEVEMENT_GROUPS"),progress.indexOf("function saveProgress("));
+ const ach=new Function(`let earned=0,records={},garage={owned:[0]},menu,spoken,returned;
+ const RANKS=[[0,"Rookie"],[500,"Cabbie"],[2000,"Pro"],[6000,"Road legend"],[15000,"King of the city"]],LIVERIES=Array(7);
+ const showMenu=(title,sub,items,speech,keep)=>{menu={title,sub,items,speech,keep}},Voice={speak:s=>spoken=s},titleMenu=id=>returned=id;
+ ${achSource}
+ return {entries:achievementEntries,open:()=>achievementsMenu(),menu:()=>menu,choose:id=>menu.items.find(i=>i.id===id).act(),spoken:()=>spoken,returned:()=>returned,progress(e,r,o){earned=e;records=r;garage.owned=o;}};
+ `)();
+ assert(ach.entries().length===13&&ach.entries().every(a=>!a.unlocked),"new career has 13 locked milestones");
+ ach.progress(2000,{"city:1":1500,"daily:2026-11-27:1":600},[0,1,2,3,6]);
+ assert(ach.entries().filter(a=>a.unlocked).length===9,"existing rank, records and owned paint recognized");
+ ach.open();assert(ach.menu().items.length===4&&ach.menu().sub.includes("9 of 13"),"grouped accessible achievement summary");
+ ach.choose("records");ach.choose("daily500");assert(ach.menu().speech.includes("Unlocked")&&ach.menu().speech.includes("500 of 500"),"achievement goal and progress spoken");
+ ach.choose("repeat");assert(ach.spoken()===ach.menu().sub,"achievement detail repeated");ach.choose("back");assert(ach.menu().keep==="daily500","return focus to achievement");
+ ach.choose("back");assert(ach.menu().keep==="records","return focus to group");ach.choose("back");assert(ach.returned()==="achievements","return focus to main menu");
+ ach.progress(0,{},[0]);assert(ach.entries().every(a=>!a.unlocked),"existing progress reset clears achievements");
+ assert(fs.readFileSync(path.join(__dirname,"../js/menus.js"),"utf8").includes('id: "achievements"'),"main menu entry wired");
  assert(h.includes('#menuList .opt.on.braked')&&h.includes('outline: 5px dotted #fff'),"menu brake distinct");
  assert(h.includes("max-height: 48dvh")&&h.includes("overflow-y: auto")&&h.includes("max-height: 600px"),"compact layout");
  function lum(hex){return [0,2,4].map(i=>parseInt(hex.slice(i,i+2),16)/255).map(v=>v<=0.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((v,x,i)=>v+x*[.2126,.7152,.0722][i],0)}

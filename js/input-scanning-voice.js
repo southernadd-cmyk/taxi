@@ -24,7 +24,7 @@ let cash = +load("switchcity-cash", 0) || 0;
 /* ======================= access settings (shared manager if present) ======================= */
 const localAcc = Object.assign(
   {
-    autoScan: false,
+    autoScan: true,
     scanInterval: 2000,
     inputSensitivity: 100,
     parking: "off",
@@ -166,6 +166,7 @@ const Scan = (() => {
     pending = null,
     group = null,
     labelTok = 0;
+  let enterHeld = false;
   let holdT = null,
     backT = null,
     backing = false;
@@ -200,7 +201,7 @@ const Scan = (() => {
   function schedule() {
     clearTimers();
     const a = acc();
-    if (!a.auto || parked || braked || !items.length) return;
+    if (!a.auto || parked || braked || enterHeld || !items.length) return;
     const t = ticket;
     const go = () => {
       if (t !== ticket) return;
@@ -289,15 +290,20 @@ const Scan = (() => {
     it.act();
   }
   function direct(k) {
+    resetKeys();
+    clearTimers();
     parked = false;
     braked = false;
     $("#status").classList.add("hide");
     i = k;
     render();
     select();
+    schedule();
   }
   function reset(list, el) {
-    cancelHold();
+    resetKeys();
+    clearTimers();
+    labelTok++;
     items = list;
     host = el;
     parked = false;
@@ -349,8 +355,9 @@ const Scan = (() => {
       render();
     },
     close() {
-      cancelHold();
+      resetKeys();
       clearTimers();
+      labelTok++;
       items = [];
       i = -1;
       group = null;
@@ -410,8 +417,14 @@ const Scan = (() => {
       cancelHold();
       if (!wasBacking) move(1, false);
     },
-    enterUp() {
+    enterDown() {
       if (!items.length) return;
+      enterHeld = true;
+      clearTimers();
+    },
+    enterUp() {
+      if (!enterHeld || !items.length) return;
+      enterHeld = false;
       const a = acc();
       if (parked) {
         unpark();
@@ -419,13 +432,18 @@ const Scan = (() => {
       }
       if (i === -1 && !group) {
         if (a.auto && a.parking === "chosen") park();
+        else schedule();
         return;
       }
       select();
+      schedule();
     },
     cancelInput() {
       cancelHold();
+      const wasHeld = enterHeld;
+      enterHeld = false;
       brakeResume = false;
+      if (wasHeld) schedule();
     },
   };
   function cancelHold() {
@@ -438,7 +456,10 @@ const Scan = (() => {
 
 /* ======================= keys: act on release, sensitivity cooldown ======================= */
 const keyState = {};
-let lastAccepted = 0;
+let lastAccepted = -Infinity;
+function nativeInput(e) {
+  return !Scan.isActive() || !!e.target?.closest?.('textarea, input, select, [contenteditable]');
+}
 function keyOf(e) {
   if (e.code === "Space" || e.key === " ") return "space";
   if (e.key === "Enter" || e.code === "Enter" || e.code === "NumpadEnter") return "enter";
@@ -446,7 +467,7 @@ function keyOf(e) {
 }
 addEventListener("keydown", (e) => {
   const k = keyOf(e);
-  if (!k) return;
+  if (!k || nativeInput(e)) return;
   e.preventDefault();
   if (e.repeat || keyState[k]) return;
   const now = performance.now();
@@ -457,13 +478,18 @@ addEventListener("keydown", (e) => {
   lastAccepted = now;
   keyState[k] = { t: now };
   if (k === "space") Scan.spaceDown();
+  else Scan.enterDown();
 });
 addEventListener("keyup", (e) => {
   const k = keyOf(e);
   if (!k) return;
-  e.preventDefault();
   const s = keyState[k];
   delete keyState[k];
+  if (nativeInput(e)) {
+    if (s) Scan.cancelInput();
+    return;
+  }
+  e.preventDefault();
   if (!s || s.rejected) return;
   if (k === "space") Scan.spaceUp();
   else Scan.enterUp();
@@ -473,6 +499,7 @@ function resetKeys() {
   Scan.cancelInput();
 }
 addEventListener("blur", resetKeys);
+addEventListener("focusin", (e) => { if (e.target?.closest?.('textarea, input, select, [contenteditable]')) resetKeys(); });
 addEventListener("narbe-input-cancelled", resetKeys);
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) resetKeys();

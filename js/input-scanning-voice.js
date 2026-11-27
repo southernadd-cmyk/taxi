@@ -95,6 +95,7 @@ function localVoices() {
 let finishLocalSpeech = null;
 const Voice = {
   latest: null,
+  latestTicket: null,
   enabled() {
     const M = window.NarbeVoiceManager;
     if (M && M.getSettings) return !!M.getSettings().ttsEnabled;
@@ -133,6 +134,7 @@ const Voice = {
   // Owned speech completion; never block input and never wait forever.
   speak(text) {
     finishLocalSpeech?.("cancelled");
+    Voice.latestTicket = null;
     const M = window.NarbeVoiceManager;
     const p = new Promise((resolve) => {
       if (!text || !Voice.enabled()) { resolve("disabled"); return; }
@@ -149,6 +151,7 @@ const Voice = {
       if (M && M.speak) {
         try {
           const ticket = M.speak(text);
+          Voice.latestTicket = ticket;
           if (ticket?.finished) Promise.resolve(ticket.finished).then(
             result => finish(result?.reason === "end" ? "ended" : result?.reason || "ended"), () => finish("error")
           );

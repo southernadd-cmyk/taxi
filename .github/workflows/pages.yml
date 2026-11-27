@@ -1,0 +1,60 @@
+name: Test and publish Switch Cab
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: switchcab-pages
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Regression tests
+        run: |
+          for test in tests/{switch-input,speech-wait,practice,visual-access,navigation,editor,editor-flow}.cjs; do node "$test" || exit 1; done
+          for script in js/*.js; do node --check "$script" || exit 1; done
+      - name: Browser dependencies
+        run: |
+          npm install --no-save --no-package-lock playwright@1.51.1
+          npx playwright install --with-deps chromium
+      - name: Browser smoke test
+        run: |
+          python3 -m http.server 8000 > /tmp/switchcab-http.log 2>&1 &
+          node tests/browser-smoke.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-smoke
+          path: browser-smoke.png
+          if-no-files-found: ignore
+  deploy:
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - name: Prepare static site
+        run: |
+          mkdir -p _site
+          cp -r index.html js assets CREDITS.md LICENSE.txt _site/
+          touch _site/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Publish
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,4 +1,11 @@
-function settingsItems(back) {
+const SETTINGS_CATEGORIES = [
+  { id: "switches", label: "Switch controls", detail: "Auto scan, scan speed and waiting for speech.", ids: ["auto", "scan", "speechwait"] },
+  { id: "speech", label: "Speech and sound", detail: "Voice, spoken directions, music and sounds.", ids: ["tts", "voice", "guide", "music", "engine", "sfx"] },
+  { id: "display", label: "Display and motion", detail: "Text size, camera, reduced motion and graphics.", ids: ["ui", "motion", "flash", "cam", "gfx", "outline"] },
+  { id: "driving", label: "Driving and difficulty", detail: "Car speed, junctions, navigation, passengers and police.", ids: ["speed", "wait", "nav", "diff", "cops"] },
+  { id: "progress", label: "Saved progress", detail: "Reset your saved progress if you choose.", ids: ["reset"] },
+];
+function settingsItems(back, category) {
   const J = ["wait for me", "follow GPS after 5 s", "follow GPS after 10 s"],
     JV = [0, 5000, 10000],
     CAM = ["Chase", "High", "Top down"];
@@ -9,10 +16,10 @@ function settingsItems(back) {
     say: label.replace("—", ""),
     act: () => {
       f();
-      settingsRefresh(back, id);
+      settingsRefresh(back, category, id);
     },
   });
-  return [
+  const all = [
     it("tts", "Text to Speech: " + (Voice.enabled() ? "On" : "Off"), () => {
       Voice.toggle();
       Voice.speak("Text to speech on");
@@ -122,9 +129,9 @@ function settingsItems(back) {
       say: a.auto ? "Auto scan on. One switch." : "Auto scan off. Two switches.",
       act: () => {
         const change = () => {
-          toggleAuto(); hints(); Scan.retime(); settingsMenu(back, "auto");
+          toggleAuto(); hints(); Scan.retime(); settingsCategoryMenu(back, category, "auto");
         };
-        if (acc().auto) confirmChoice("Use two switches?", "You will need Space to move and Enter to choose. Cancel if you only use one switch.", "Use two switches", change, () => settingsMenu(back, "auto"));
+        if (acc().auto) confirmChoice("Use two switches?", "You will need Space to move and Enter to choose. Cancel if you only use one switch.", "Use two switches", change, () => settingsCategoryMenu(back, category, "auto"));
         else change();
       },
     },
@@ -163,24 +170,35 @@ function settingsItems(back) {
           try { ["switchcity-game", "switchcity-game2", "switchcity-game3"].forEach(k => localStorage.removeItem(k)); } catch (_) {}
           shift = null;
           titleMenu();
-        }, () => settingsMenu(back, "reset")),
+        }, () => settingsCategoryMenu(back, category, "reset")),
     },
     {
       id: "back",
       label: "⬅️  Back",
-      say: "Back",
-      act: () => {
-        resetArmed = false;
-        back();
-      },
+      say: "Back to settings categories",
+      act: () => settingsMenu(back, category),
     },
   ];
+  const group = SETTINGS_CATEGORIES.find(c => c.id === category);
+  const byId = new Map(all.map(item => [item.id, item]));
+  return [...(group?.ids || []).map(id => byId.get(id)).filter(Boolean), byId.get("back")];
 }
-function settingsRefresh(back, id) {
+function settingsRefresh(back, category, id) {
   resetArmed = false;
-  Scan.setItems(settingsItems(back), id);
+  Scan.setItems(settingsItems(back, category), id);
+}
+function settingsCategoryMenu(back, category, keepId) {
+  resetArmed = false;
+  const group = SETTINGS_CATEGORIES.find(c => c.id === category);
+  if (!group) return settingsMenu(back);
+  showMenu(group.label, group.detail, settingsItems(back, category), "Settings. " + group.label + ". " + group.detail, keepId);
 }
 function settingsMenu(back, keepId) {
   resetArmed = false;
-  showMenu("Settings", "Choose a setting to change it.", settingsItems(back), "Settings", keepId);
+  const items = SETTINGS_CATEGORIES.map(group => ({
+    id: group.id, label: group.label, say: group.label + ". " + group.detail,
+    act: () => settingsCategoryMenu(back, group.id),
+  }));
+  items.push({ id: "back", label: "⬅️  Back", say: "Back to previous menu", act: back });
+  showMenu("Settings", "Choose a category. Your settings are saved when changed.", items, "Settings. Choose a category.", keepId);
 }

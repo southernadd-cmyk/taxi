@@ -144,9 +144,8 @@ function start(k, levelId, lvObj) {
   if (shift) {
     banner(daily ? "Daily challenge" : "Shift start", "Three strikes and you are out");
     openJunction(
-      (daily ? "Daily challenge. Everyone gets the same city and fares today. " : "Your shift starts now. ") +
-        "Your cab has three seats. Collect passengers, drop them off before they lose patience, and keep away from the police. Three strikes or an empty fuel tank ends the shift. " +
-        guidance(),
+      (daily ? "Daily challenge. " : "Shift starts. ") +
+        (game.diff === 0 ? "Relaxed mode. No fuel limit or police. " : "Collect fares and watch fuel and patience. ") + guidance(),
     );
   } else {
     banner(testing ? "Test drive" : "Cruise", "Drive anywhere");
@@ -154,6 +153,9 @@ function start(k, levelId, lvObj) {
   }
 }
 function resume(sg) {
+  if (Number.isInteger(sg.difficulty) && sg.difficulty >= 0 && sg.difficulty <= 2) {
+    game.diff = sg.difficulty; saveGameSettings();
+  }
   rand = Math.random;
   enterPlay(sg.modeKey, sg.levelId, sg.citySnapshot || null);
   Object.assign(car, {
@@ -181,7 +183,7 @@ function resume(sg) {
       rival.ang = (-rival.d * Math.PI) / 2;
     }
   }
-  (sg.cops || []).forEach((c) => {
+  (policeEnabled() ? sg.cops || [] : []).forEach((c) => {
     cops.push({
       x: c.x,
       y: c.y,

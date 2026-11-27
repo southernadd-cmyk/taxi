@@ -450,7 +450,7 @@ let speaking = false;
     const p = raw(t);
     if (t) {
       speaking = true;
-      p.then(() => (speaking = false));
+      p.then(() => { if (Voice.latest === p) speaking = false; });
     }
     return p;
   };
@@ -462,10 +462,10 @@ function updateLoops(state) {
     s = loopAudio("siren");
   const tm = game.music ? (speaking ? 0.12 : 0.32) : 0;
   m.volume += (tm - m.volume) * 0.08;
-  const te = game.engine && state.engineOn ? 0.14 + state.rate * 0.1 : 0;
+  const te = game.engine && state.engineOn ? (speaking ? 0.035 : 0.14 + state.rate * 0.1) : 0;
   e.volume += (te - e.volume) * 0.1;
   e.playbackRate = 0.7 + state.rate * 0.9;
-  const ts = game.sfx ? state.siren * 0.35 : 0;
+  const ts = game.sfx ? state.siren * (speaking ? 0.10 : 0.35) : 0;
   s.volume += (ts - s.volume) * 0.1;
 }
 // direction earcons on scan focus

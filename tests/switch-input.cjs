@@ -22,6 +22,8 @@ function testScanner(source) {
   a.Scan.close();assert(!a.key("Space",true).prevented&&!a.key("Enter",false).prevented,"inactive editor owns native input");
   a=boot({"switchcity-access":JSON.stringify({autoScan:false,waitForSpeech:false})});assert(!a.acc().auto,"saved two switch setting retained");a.open();a.key("Space",true);a.key("Space",false);assert(a.Scan.index===0,"manual short Space moves");a.advance(100);a.key("Enter",true);a.key("Enter",false);assert(a.picks.join()==="a","manual Enter release selects");a.advance(100);a.key("Space",true);a.advance(800);a.key("Space",false);assert(a.Scan.index===-1,"long Space reverse retained");
   a=boot();a.open();a.advance(2000);a.key("Enter",true);a.advance(200);a.key("Space",true);a.key("Space",false);a.key("Enter",false);assert(a.picks.join()==="a","overlapping Space cannot change held Enter target");
+  a=boot();a.open();a.advance(2000);a.key("Space",true);a.advance(800);a.key("Space",false);assert(!a.Scan.braked,"held Space resumes on first release");a.advance(1999);assert(a.Scan.index===0,"full interval after held brake");a.advance(1);assert(a.Scan.index===1,"auto advances after brake");
+  a=boot();a.open();a.advance(2000);a.key("Enter",true);a.advance(500);a.key("Enter",false);a.advance(20);a.key("Enter",true);a.key("Enter",false);assert(a.picks.length===1,"bounce immediately after long release rejected");a.advance(100);a.key("Enter",true);a.key("Enter",false);assert(a.picks.length===2,"valid tap after cooldown");
   a=boot();a.open();const edit={target:{closest:()=>({})}};assert(!a.key("Space",true,edit).prevented&&!a.key("Space",false,edit).prevented,"text fields retain typing");
   return passed;
 }

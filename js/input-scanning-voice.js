@@ -188,6 +188,9 @@ let Scan = (() => {
     braked = false,
     brakeResume = false,
     loops = 0,
+    fullLoop = false,
+    loopDir = 1,
+    brakeAt = null,
     ticket = 0,
     timer = null,
     pending = null,
@@ -275,7 +278,9 @@ let Scan = (() => {
       announce();
       return;
     }
-    if (i === -1) i = dir > 0 ? 0 : n - 1;
+    if (dir !== loopDir) fullLoop = false;
+    loopDir = dir;
+    if (i === -1) { i = dir > 0 ? 0 : n - 1; fullLoop = true; }
     else {
       i += dir;
       if (i >= n || i < 0) i = -1;
@@ -284,7 +289,7 @@ let Scan = (() => {
     if (i === -1) {
       pending = null;
       if (auto) {
-        loops++;
+        if (fullLoop) loops++;
         const a = acc();
         if (a.parking !== "off") {
           pending = Voice.speak("park");
@@ -294,6 +299,7 @@ let Scan = (() => {
           }
         }
       }
+      fullLoop = false;
     } else {
       scanFocus(items[i]);
       announce();
@@ -306,11 +312,14 @@ let Scan = (() => {
     render();
     $("#status").textContent = "Parked. Press Enter to carry on.";
     $("#status").classList.remove("hide");
+    $("#status").scrollIntoView?.({block:"nearest"});
     pending = Voice.speak("parked");
   }
   function unpark() {
     parked = false;
     loops = 0;
+    fullLoop = true;
+    loopDir = 1;
     $("#status").classList.add("hide");
     i = 0;
     render();
@@ -337,6 +346,7 @@ let Scan = (() => {
     clearTimers();
     parked = false;
     braked = false;
+    fullLoop = false;
     $("#status").classList.add("hide");
     i = k;
     render();
@@ -352,7 +362,10 @@ let Scan = (() => {
     parked = false;
     braked = false;
     brakeResume = false;
+    brakeAt = null;
     loops = 0;
+    fullLoop = false;
+    loopDir = 1;
     $("#status").classList.add("hide");
   }
   return {
@@ -367,13 +380,13 @@ let Scan = (() => {
     },
     isActive,
     // a fresh root menu or junction: starts on the silent blank step with a full interval
-    open(list, el, titleSpeech, keepId) {
+    open(list, el, titleSpeech, keepId, feedback) {
       reset(list, el);
       group = null;
       i = keepId == null ? -1 : items.findIndex(x => x.id === keepId);
       render();
       pending = titleSpeech ? Voice.speak(titleSpeech) : null;
-      if (i >= 0) { scanFocus(items[i]); announce(); }
+      if (i >= 0) { scanFocus(items[i]); if (feedback) pending = feedback; else announce(); }
       schedule();
     },
     // a row inside a task: loops through its items and one Back stop; startId re-lands on an item
@@ -438,6 +451,7 @@ let Scan = (() => {
       const a = acc();
       if (a.auto && a.brake) {
         if (parked || i === -1 || atBack()) return;
+        brakeAt = performance.now();
         if (!braked) {
           braked = true;
           clearTimers();
@@ -460,12 +474,14 @@ let Scan = (() => {
       if (!items.length || enterHeld) return;
       const a = acc();
       if (a.auto && a.brake) {
-        if (brakeResume) {
+        if (brakeResume || (brakeAt !== null && performance.now() - brakeAt >= HOLD_MS)) {
           brakeResume = false;
           braked = false;
+          pending = null;
           render();
           schedule();
         }
+        brakeAt = null;
         return;
       }
       if (a.auto) {
@@ -505,6 +521,7 @@ let Scan = (() => {
       const wasHeld = enterHeld;
       enterHeld = false;
       brakeResume = false;
+      brakeAt = null;
       if (wasHeld) schedule();
     },
   };
@@ -519,6 +536,7 @@ let Scan = (() => {
 /* ======================= keys: act on release, sensitivity cooldown ======================= */
 const keyState = {};
 let lastAccepted = -Infinity;
+const lastRelease = {};
 function nativeInput(e) {
   return !Scan.isActive() || !!e.target?.closest?.('textarea, input, select, [contenteditable]');
 }
@@ -533,11 +551,10 @@ addEventListener("keydown", (e) => {
   e.preventDefault();
   if (e.repeat || keyState[k]) return;
   const now = performance.now();
-  if (!window.NarbeScanManager && now - lastAccepted < acc().sens) {
+  if (!window.NarbeScanManager && (now - lastAccepted < acc().sens || now - (lastRelease[k] ?? -Infinity) < acc().sens)) {
     keyState[k] = { rejected: true };
     return;
   }
-  lastAccepted = now;
   if (typeof autoT !== 'undefined') clearTimeout(autoT);
   keyState[k] = { t: now };
   if (k === "space") Scan.spaceDown();
@@ -553,7 +570,10 @@ addEventListener("keyup", (e) => {
     return;
   }
   e.preventDefault();
-  if (!s || s.rejected) return;
+  if (!s) return;
+  lastRelease[k] = performance.now();
+  if (s.rejected) return;
+  lastAccepted = performance.now();
   if (k === "space") Scan.spaceUp();
   else Scan.enterUp();
 });
@@ -561,11 +581,11 @@ function resetKeys() {
   for (const k in keyState) delete keyState[k];
   Scan.cancelInput();
 }
-addEventListener("blur", resetKeys);
+addEventListener("blur", () => { resetKeys(); if (typeof autoT !== "undefined") clearTimeout(autoT); });
 addEventListener("focusin", (e) => { if (e.target?.closest?.('textarea, input, select, [contenteditable]')) resetKeys(); });
 addEventListener("narbe-input-cancelled", resetKeys);
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden) resetKeys();
+  if (document.hidden) { resetKeys(); if (typeof autoT !== "undefined") clearTimeout(autoT); }
 });
 function hints() {
   const h = acc().auto

@@ -484,6 +484,7 @@ function patrolDir(c) {
 }
 function planCops() {
   while (intentGroup.children.length) intentGroup.remove(intentGroup.children[0]);
+  if (!policeEnabled()) { if (cops.length) clearCops(); return; }
   let spotted = false;
   cops.forEach((c, i) => {
     if (!c.chasing && moves(c.x, c.y, car.x, car.y) <= SPOT[game.cops]) {
@@ -543,7 +544,7 @@ function addCop() {
   return cops[cops.length - 1];
 }
 function patrolCount() {
-  if (!shift || !game.cops) return 0;
+  if (!policeEnabled()) return 0;
   return Math.min(
     3,
     Math.floor((shift.level - 1 + (game.diff === 2 ? 1 : 0)) / 2) + (game.diff === 0 ? -1 : 0),
@@ -570,8 +571,11 @@ function clearCops() {
 function copCap() {
   return game.diff === 2 ? 4 : 3;
 }
+function policeEnabled() {
+  return !!shift && !testing && modeKey !== 'practice' && game.diff > 0 && !!game.cops;
+}
 function startChase(n) {
-  if (!game.cops) return;
+  if (!policeEnabled()) return;
   if (!cops.some((c) => c.chasing)) evade = 0;
   cops.forEach((c) => (c.chasing = true));
   while (cops.length < Math.min(copCap(), n)) addCop();
@@ -596,6 +600,7 @@ function pathNodes(d) {
   return out;
 }
 function danger(d) {
+  if (!policeEnabled()) return false;
   const path = pathNodes(d);
   return cops.some((c) => {
     const nx = copNext(c);
@@ -608,7 +613,7 @@ function danger(d) {
 }
 
 /* ---------- a turn ---------- */
-function openJunction(speech) {
+function openJunction(speech, keep, feedback) {
   const practice = modeKey === 'practice';
   car.moving = false;
   clearTimeout(autoT);
@@ -710,11 +715,11 @@ function openJunction(speech) {
     (
       (speech || (game.guide ? guidance() : "")) +
       (shut.length ? " Road closed " + shut.join(" and ") + "." : "")
-    ).trim() || null,
+    ).trim() || null, keep, feedback,
   );
   if (!practice && game.wait && !acc().auto && g >= 0 && !danger(g))
     autoT = setTimeout(() => {
-      if (!acc().auto && Scan.index === -1 && !menuOpen() && mode === "play" && !car.moving) drive(g);
+      if (!document.hidden && !acc().auto && Scan.index === -1 && !menuOpen() && mode === "play" && !car.moving) drive(g);
     }, game.wait);
 }
 function nitroItem() {
@@ -761,8 +766,8 @@ function cycleTarget() {
   refreshOptions("target");
 }
 function refreshOptions(keep) {
-  openJunction(" ");
-  Scan.setItems(Scan.items, keep);
+  const feedback = Voice.latest;
+  openJunction(" ", keep, feedback);
 }
 function drive(d) {
   clearTimeout(autoT);
@@ -857,7 +862,7 @@ function arrive(caught) {
   const add = (s) => {
     if (s) say.push(s);
   };
-  if (caught) {
+  if (caught && policeEnabled()) {
     add(busted());
     if (mode !== "play") return;
   }
@@ -978,7 +983,7 @@ function pickUp(w) {
   waiting = waiting.filter((x) => x !== w);
   if (targetPick === w) targetPick = null;
   const hide = landmarkNode(level, "HO"),
-    getaway = game.cops > 0 && hide && rand() < 0.12 + 0.04 * shift.level && !nodeEq(hide, car.x, car.y);
+    getaway = policeEnabled() && hide && rand() < 0.12 + 0.04 * shift.level && !nodeEq(hide, car.x, car.y);
   const p = { dest: w.dest, destName: w.destName, pay: w.pay, getaway, dare: null, size: w.size };
   if (getaway) {
     p.dest = hide;
@@ -1216,18 +1221,12 @@ function collect(kind, amount) {
   const NM = { coins: "Cash grab", ramp: "Crazy jump", boxes: "Crazy smash", cones: "Crazy smash" };
   if (kind !== "coins")
     Voice.speak(NM[kind] + "! Plus " + v + (onb > 1 ? ", with " + onb + " passengers cheering" : ""));
-  if ((kind === "boxes" || kind === "cones") && game.cops) {
+  if ((kind === "boxes" || kind === "cones") && policeEnabled()) {
     heat++;
     updateHud();
     if (heat >= 3 && !cops.length) {
       startChase(2);
-      setTimeout(
-        () =>
-          Voice.speak(
-            "Wanted! All that smashing got the police after you. Stay five moves away from them for two turns to lose them, or deliver fares to cool things down.",
-          ),
-        1500,
-      );
+      if (turn?.speech) turn.speech.push("Wanted! Police are after you. Stay five moves away for two turns.");
     } else if (heat > 3 && cops.length) startChase(cops.length + 1);
   }
 }
@@ -1393,6 +1392,7 @@ function saveGame() {
   saveProgress();
   store("switchcity-game3", {
     modeKey,
+    difficulty: game.diff,
     levelId: level.id,
     ...(level.builtin ? {} : { citySnapshot: JSON.parse(JSON.stringify(level)) }),
     car: { x: car.x, y: car.y, d: car.d },

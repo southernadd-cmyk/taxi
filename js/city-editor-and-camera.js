@@ -768,11 +768,20 @@ applyUI();
 if (typeof installHubScan === 'function') installHubScan();
 hints();
 $("#menuSub").textContent = "Loading the city…";
-loadAssets().then(() => {
+if (!renderer) {
+  $("#noGL").classList.add("hide");
+  showMenu("3D graphics unavailable", "This browser could not start WebGL. Try another browser or enable hardware acceleration.",
+    [{id:"exit",label:"Exit game",say:"Exit game",act:exitGame}], "3D graphics unavailable. Exit game.");
+} else loadAssets().then(() => {
   setupFX();
   buildLevel(BUILTIN[0]);
   spawnTraffic();
   resize();
   titleMenu();
   requestAnimationFrame(loop);
+}).catch(() => {
+  showMenu("Could not load city", "Reload the page to try again, or exit.", [
+    {id:"retry",label:"Try again",say:"Try again",act:()=>location.reload()},
+    {id:"exit",label:"Exit game",say:"Exit game",act:exitGame}
+  ], "Could not load city. Try again or exit.");
 });

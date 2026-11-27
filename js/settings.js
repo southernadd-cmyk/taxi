@@ -12,14 +12,14 @@ function settingsItems(back) {
       settingsRefresh(back, id);
     },
   });
-  return [
+  const options = [
     it("tts", "Text to Speech: " + (Voice.enabled() ? "On" : "Off"), () => {
       Voice.toggle();
-      Voice.speak("Text to speech on");
+      if (Voice.enabled()) Voice.speak("Text to speech on");
     }),
     it("voice", "Voice: " + Voice.name(), () => {
       Voice.cycle();
-      setTimeout(() => Voice.speak("Voice: " + Voice.name()), 50);
+      Voice.speak("Voice: " + Voice.name());
     }),
     it("ui", "Text size: " + (game.ui ? "Huge" : "Large"), () => {
       game.ui = game.ui ? 0 : 1;
@@ -28,6 +28,7 @@ function settingsItems(back) {
       Voice.speak("Text size " + (game.ui ? "huge" : "large"));
     }),
     it("diff", "Passengers: " + ["Relaxed", "Normal", "Tough"][game.diff], () => {
+      if (mode === "play" && shift) { Voice.speak("Choose difficulty before starting a shift."); return; }
       game.diff = (game.diff + 1) % 3;
       saveGameSettings();
       Voice.speak(
@@ -79,6 +80,7 @@ function settingsItems(back) {
     }),
     it("cops", "Police chase: " + ["Off", "Slow", "Normal"][game.cops], () => {
       game.cops = (game.cops + 1) % 3;
+      if (!game.cops && mode === "play") clearCops();
       saveGameSettings();
       updateHud();
       Voice.speak(
@@ -133,6 +135,20 @@ function settingsItems(back) {
       Voice.speak("Scan speed " + acc().interval / 1000 + " seconds");
     }),
     ...(!window.NarbeScanManager ? [
+      it("sensitivity", "Input sensitivity: " + a.sens + " ms", () => {
+        const values=[50,100,200,300]; localAcc.inputSensitivity=values[(values.indexOf(a.sens)+1)%values.length];
+        store("switchcity-access",localAcc); Voice.speak("Input sensitivity " + localAcc.inputSensitivity + " milliseconds");
+      }),
+      it("parking", "Parking: " + a.parking, () => {
+        const values=["off","chosen","auto"];localAcc.parking=values[(values.indexOf(a.parking)+1)%values.length];
+        store("switchcity-access",localAcc);Voice.speak("Parking " + localAcc.parking);
+      }),
+      it("parkloops", "Loops before parking: " + a.loops, () => {
+        localAcc.parkLoops=a.loops%3+1;store("switchcity-access",localAcc);Voice.speak("Park after " + localAcc.parkLoops + " loops");
+      }),
+      it("brake", "Space brake: " + (a.brake?"On":"Off"), () => {
+        localAcc.spaceBrake=!a.brake;store("switchcity-access",localAcc);Voice.speak("Space brake " + (localAcc.spaceBrake?"on":"off"));
+      }),
       it("speechwait", "Wait for Speech: " + (a.wait ? "On" : "Off"), () => {
         localAcc.waitForSpeech = !localAcc.waitForSpeech;
         store("switchcity-access", localAcc);
@@ -175,6 +191,13 @@ function settingsItems(back) {
       },
     },
   ];
+  for (const option of options) {
+    if ((option.id === "wait" && a.auto) || ((option.id === "cam" || option.id === "flash") && RM) ||
+        (option.id === "diff" && mode === "play" && shift) ||
+        (["parking","brake","speechwait"].includes(option.id) && !a.auto) ||
+        (option.id === "parkloops" && (!a.auto || a.parking !== "auto"))) option.disabled = true;
+  }
+  return options;
 }
 function settingsRefresh(back, id) {
   resetArmed = false;

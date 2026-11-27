@@ -57,7 +57,7 @@ function installHubScan() {
       choice:true,holdThreshold:HOLD_MS,statusHost:$("#status"),
       badge:{update(){},destroy(){$("#status").classList.add("hide")}},
       getId:x=>x.id,getLabel:x=>x.say||x.label,
-      speak:label=>quiet?null:adopted||window.NarbeVoiceManager.speak(label),
+      speak:label=>{ if(quiet)return null; if(adopted)return adopted; Voice.speak(label); return Voice.latestTicket; },
       onHighlight:draw,onSelect:choose
     });
   }
@@ -65,9 +65,10 @@ function installHubScan() {
     get index(){return state.index>=0&&state.index<items.length?state.index:-1},
     get items(){return items},get braked(){return !!state.braked},
     isActive:()=>items.length>0,
-    open(list,el,title,keep){
+    open(list,el,title,keep,feedback){
+      const owned=feedback ? Voice.latestTicket : null;
       prepare(list,el,null);controller.open(items,{restoreId:keep??null});
-      quiet=false;controller.announceCurrent(keep&&items.some(x=>x.id===keep)?undefined:title||null);
+      quiet=false;adopted=owned;controller.announceCurrent(owned?'feedback':keep&&items.some(x=>x.id===keep)?undefined:title||null);adopted=null;
     },
     enterGroup(list,el,back,keep,speech){
       prepare(list,el,back);controller.open([parent],{restoreId:parent.id});

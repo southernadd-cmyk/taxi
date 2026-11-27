@@ -30,7 +30,7 @@ const localAcc = Object.assign(
     parking: "off",
     parkLoops: 2,
     spaceBrake: true,
-    waitForSpeech: false,
+    waitForSpeech: true,
   },
   load("switchcity-access", {}),
 );
@@ -92,7 +92,9 @@ function localVoices() {
   const en = v.filter((x) => /^en/i.test(x.lang));
   return en.length ? en : v;
 }
+let finishLocalSpeech = null;
 const Voice = {
+  latest: null,
   enabled() {
     const M = window.NarbeVoiceManager;
     if (M && M.getSettings) return !!M.getSettings().ttsEnabled;
@@ -103,6 +105,10 @@ const Voice = {
     if (M && M.toggleTTS) M.toggleTTS();
     else {
       localVoice.tts = !localVoice.tts;
+      if (!localVoice.tts) {
+        finishLocalSpeech?.('disabled');
+        if ('speechSynthesis' in window) speechSynthesis.cancel();
+      }
       store("switchcity-voice", localVoice);
     }
   },
@@ -124,30 +130,48 @@ const Voice = {
     const v = localVoices().find((x) => x.name === localVoice.voice);
     return v ? v.name.replace(/\(.*?\)/g, "").trim() : "Default";
   },
-  // returns a promise that settles when the speech ends (capped at 10 s)
+  // Owned speech completion; never block input and never wait forever.
   speak(text) {
-    if (!text || !Voice.enabled()) return Promise.resolve();
-    const cap = new Promise((r) => setTimeout(r, Math.min(10000, 600 + text.length * 70)));
+    finishLocalSpeech?.("cancelled");
     const M = window.NarbeVoiceManager;
-    if (M && M.speak) {
-      const r = M.speak(text);
-      return Promise.race([
-        r && r.finished ? Promise.resolve(r.finished).catch(() => {}) : cap,
-        new Promise((x) => setTimeout(x, 10000)),
-      ]);
-    }
-    if (!("speechSynthesis" in window)) return Promise.resolve();
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.rate = 1.05;
-    const v = localVoices().find((x) => x.name === localVoice.voice);
-    if (v) u.voice = v;
-    const done = new Promise((r) => {
-      u.onend = r;
-      u.onerror = r;
+    const p = new Promise((resolve) => {
+      if (!text || !Voice.enabled()) { resolve("disabled"); return; }
+      let settled = false, cap, startup;
+      const finish = (reason) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(cap);
+        clearTimeout(startup);
+        if (finishLocalSpeech === finish) finishLocalSpeech = null;
+        resolve(reason);
+      };
+      cap = setTimeout(() => finish("timeout"), Math.min(10000, 600 + text.length * 70));
+      if (M && M.speak) {
+        try {
+          const ticket = M.speak(text);
+          if (ticket?.finished) Promise.resolve(ticket.finished).then(
+            result => finish(result?.reason || "ended"), () => finish("error")
+          );
+        } catch (_) { finish("error"); }
+        return;
+      }
+      if (!("speechSynthesis" in window)) { finish("disabled"); return; }
+      finishLocalSpeech = finish;
+      try {
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.rate = 1.05;
+        const v = localVoices().find(x => x.name === localVoice.voice);
+        if (v) u.voice = v;
+        u.onstart = () => clearTimeout(startup);
+        u.onend = () => finish("ended");
+        u.onerror = () => finish("error");
+        startup = setTimeout(() => finish("error"), 1000);
+        speechSynthesis.speak(u);
+      } catch (_) { finish("error"); }
     });
-    speechSynthesis.speak(u);
-    return Promise.race([done, new Promise((r) => setTimeout(r, 10000))]);
+    Voice.latest = p;
+    return p;
   },
 };
 
@@ -279,6 +303,7 @@ const Scan = (() => {
     schedule();
   }
   function select() {
+    const before = Voice.latest, beforeHost = host, beforeItems = items;
     if (atBack()) {
       sfx("select");
       group.back();
@@ -288,9 +313,11 @@ const Scan = (() => {
     if (!it) return;
     sfx("select");
     it.act();
+    if (host === beforeHost && items.length && Voice.latest !== before && (items === beforeItems || i >= 0)) pending = Voice.latest;
   }
   function direct(k) {
     resetKeys();
+    if (typeof autoT !== 'undefined') clearTimeout(autoT);
     clearTimers();
     parked = false;
     braked = false;
@@ -382,8 +409,8 @@ const Scan = (() => {
           clearTimers();
           render();
           const tok = labelTok;
-          (pending || Promise.resolve()).then(() => {
-            if (braked && tok === labelTok) Voice.speak("Paused");
+          (pending || Promise.resolve()).then((reason) => {
+            if (reason === "ended" && braked && tok === labelTok) Voice.speak("Paused");
           });
         } else brakeResume = true;
         return;
@@ -477,6 +504,7 @@ addEventListener("keydown", (e) => {
     return;
   }
   lastAccepted = now;
+  if (typeof autoT !== 'undefined') clearTimeout(autoT);
   keyState[k] = { t: now };
   if (k === "space") Scan.spaceDown();
   else Scan.enterDown();

@@ -709,9 +709,9 @@ function openJunction(speech) {
       (shut.length ? " Road closed " + shut.join(" and ") + "." : "")
     ).trim() || null,
   );
-  if (game.wait && g >= 0 && !danger(g))
+  if (game.wait && !acc().auto && g >= 0 && !danger(g))
     autoT = setTimeout(() => {
-      if (!menuOpen() && mode === "play" && !car.moving) drive(g);
+      if (!acc().auto && Scan.index === -1 && !menuOpen() && mode === "play" && !car.moving) drive(g);
     }, game.wait);
 }
 function nitroItem() {

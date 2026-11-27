@@ -67,7 +67,8 @@ function settingsItems(back) {
       saveGameSettings();
       Voice.speak("Car speed " + ["slow", "normal", "fast"][game.speed]);
     }),
-    it("wait", "At junctions: " + J[JV.indexOf(game.wait)], () => {
+    it("wait", "At junctions: " + (a.auto ? "wait for me (one switch)" : J[JV.indexOf(game.wait)]), () => {
+      if (acc().auto) { Voice.speak('One switch always waits at junctions.'); return; }
       game.wait = JV[(JV.indexOf(game.wait) + 1) % 3];
       saveGameSettings();
       Voice.speak(
@@ -122,6 +123,13 @@ function settingsItems(back) {
       cycleSpeed();
       Voice.speak("Scan speed " + acc().interval / 1000 + " seconds");
     }),
+    ...(!window.NarbeScanManager ? [
+      it("speechwait", "Wait for Speech: " + (a.wait ? "On" : "Off"), () => {
+        localAcc.waitForSpeech = !localAcc.waitForSpeech;
+        store("switchcity-access", localAcc);
+        Voice.speak("Wait for speech " + (localAcc.waitForSpeech ? "on" : "off"));
+      }),
+    ] : []),
     it("sfx", "Sound Effects: " + (game.sfx ? "On" : "Off"), () => {
       game.sfx = !game.sfx;
       saveGameSettings();

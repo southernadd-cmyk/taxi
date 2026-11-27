@@ -62,7 +62,7 @@ function visualTests(h,input,city,cam,turns,fx,models,settings){
  `)();
  const sh=settingsHarness;sh.open();
  assert(sh.current().items.map(i=>i.id).join(",")==="switches,speech,display,driving,progress,back","settings root categories");
- const expected={switches:["auto","scan","speechwait"],speech:["tts","voice","guide","music","engine","sfx"],display:["ui","hud","motion","flash","cam","gfx","outline"],driving:["speed","wait","nav","diff","cops"],progress:["reset"]};
+ const expected={switches:["auto","scan","speechwait"],speech:["tts","voice","guide","music","engine","sfx"],display:["ui","hud","map","motion","flash","cam","gfx","outline"],driving:["speed","wait","nav","diff","cops"],progress:["reset"]};
  for(const [category,ids] of Object.entries(expected)){
    sh.choose(category);assert(sh.current().items.map(i=>i.id).join(",")===[...ids,"back"].join(","),"category membership and ordering: "+category);
    assert(sh.current().speech.includes(sh.current().title),"category announced");
@@ -72,6 +72,8 @@ function visualTests(h,input,city,cam,turns,fx,models,settings){
  assert(sh.game.ui===1&&sh.saves()===1&&sh.current().keep==="ui"&&sh.current().title==="Display and motion","change saved and focus retained");
  sh.choose("hud");assert(sh.game.simpleHud===true&&sh.saves()===2&&sh.current().keep==="hud","simplified HUD opt-in persisted and focus retained");
  sh.choose("hud");assert(sh.game.simpleHud===false&&sh.saves()===3,"full HUD restored");
+ sh.choose("map");assert(sh.game.northUpMap===true&&sh.saves()===4&&sh.current().keep==="map","north-up minimap preference saved");
+ sh.choose("map");assert(sh.game.northUpMap===false&&sh.saves()===5,"heading-up restored");
  sh.choose("back");sh.choose("switches");sh.choose("auto");
  assert(sh.confirm().title==="Use two switches?"&&sh.auto(),"switch mode requires confirmation");
  sh.confirm().no();assert(sh.current().keep==="auto"&&sh.auto(),"cancel stays in switch controls");
@@ -95,6 +97,19 @@ function visualTests(h,input,city,cam,turns,fx,models,settings){
  hv=hud.render(true,"play","practice");assert(!hv.simple&&hv.mission.textContent==="Practice instruction","practice instructions unaffected");
  hv=hud.render(true,"editor");assert(!hv.simple&&hv.mission.innerHTML.includes("City"),"editor unaffected");
  assert(h.includes("#hud.simple-driving #mm")&&h.includes("#hud.simple-driving .pbar"),"optional map and redundant progress bar hidden");
+ const mapSource=turns.slice(turns.indexOf("function minimapRotation("),turns.indexOf("/* ---------- render loop ---------- */"));
+ const mapHarness=new Function(`let RM=false,game={},mode="play",car={d:0,ang:0},G=9,NODE=22,EXT=176,DX=[0,1,0,-1],DZ=[-1,0,1,0],closed=new Set(),goodies={},waiting=[{x:2,y:3,size:"LONG",col:0xffffff}],shift={onboard:[{dest:[4,4]}]},cops=[],mm={width:360};
+ let angle=0,stack=[],texts=[],arrows=[],rotations=[];const pos=()=>[88,88],routeNodes=()=>[];
+ const mx={save(){stack.push(angle)},restore(){angle=stack.pop()},translate(){},rotate(a){angle+=a;rotations.push(a)},clearRect(){},fillRect(){},beginPath(){},moveTo(x,y){if(x===0&&y===-22)arrows.push(angle)},lineTo(){},stroke(){},arc(){},fill(){},rect(){},closePath(){},fillText(label){texts.push([label,angle])}};
+ ${mapSource}
+ return (d,north=false,reduced=false)=>{car.d=d;car.ang=-d*Math.PI/2;game.northUpMap=north;RM=reduced;angle=0;stack=[];texts=[];arrows=[];rotations=[];drawMini();return {rotation:minimapRotation(),texts,arrows,stack,angle}};
+ `)();
+ for(let d=0;d<4;d++){
+   const map=mapHarness(d);assert(Math.abs(map.rotation+d*Math.PI/2)<1e-9,"map rotates opposite heading "+d);
+   assert(map.texts.map(t=>t[0]).join(",")==="L,1,N"&&map.texts.every(t=>Math.abs(t[1])<1e-9),"map labels stay upright");
+   assert(map.arrows.length===1&&Math.abs(map.arrows[0])<1e-9&&!map.stack.length&&map.angle===0,"heading-up arrow points up and canvas state restored");
+   assert(mapHarness(d,true).rotation===0&&mapHarness(d,false,true).rotation===0,"north-up preference and reduced motion");
+ }
  const progress=fs.readFileSync(path.join(__dirname,"../js/progress.js"),"utf8");
  const achSource=progress.slice(progress.indexOf("const ACHIEVEMENT_GROUPS"),progress.indexOf("function saveProgress("));
  const ach=new Function(`let earned=0,records={},garage={owned:[0]},menu,spoken,returned;

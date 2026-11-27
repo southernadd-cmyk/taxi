@@ -1512,6 +1512,11 @@ function savedGame() {
 }
 
 /* ---------- minimap ---------- */
+// Rotate by complete junction headings, not the animated vehicle angle.
+// A square city stays fully in view; reduced motion always stays north-up.
+function minimapRotation() {
+  return RM || game.northUpMap ? 0 : -car.d * Math.PI / 2;
+}
 function drawMini() {
   if (mode !== "play") return;
   const s = mm.width,
@@ -1521,6 +1526,20 @@ function drawMini() {
   mx.clearRect(0, 0, s, s);
   mx.fillStyle = "#251a45";
   mx.fillRect(0, 0, s, s);
+  const headingUp = !RM && !game.northUpMap;
+  const rotation = minimapRotation();
+  mx.save();
+  mx.translate(s / 2, s / 2);
+  mx.rotate(rotation);
+  mx.translate(-s / 2, -s / 2);
+  // Counter-rotate text so fare letters and destination numbers remain legible.
+  const uprightText = (label, x, y) => {
+    mx.save();
+    mx.translate(x, y);
+    mx.rotate(-rotation);
+    mx.fillText(label, 0, 1);
+    mx.restore();
+  };
   mx.strokeStyle = "#6b5f99";
   mx.lineWidth = 9;
   for (let n = 0; n < G; n++) {
@@ -1571,7 +1590,7 @@ function drawMini() {
     mx.fill();
     mx.stroke();
     mx.fillStyle = "#1d1238";
-    mx.fillText(w.size[0], P(w.x * NODE), P(w.y * NODE) + 1);
+    uprightText(w.size[0], P(w.x * NODE), P(w.y * NODE));
   });
   if (shift)
     shift.onboard.forEach((p, i) => {
@@ -1583,7 +1602,7 @@ function drawMini() {
       mx.fill();
       mx.stroke();
       mx.fillStyle = "#1d1238";
-      mx.fillText(String(i + 1), P(p.dest[0] * NODE), P(p.dest[1] * NODE) + 1);
+      uprightText(String(i + 1), P(p.dest[0] * NODE), P(p.dest[1] * NODE));
     });
   cops.forEach((c) => {
     const p = pos(c);
@@ -1606,7 +1625,7 @@ function drawMini() {
   const p = pos(car);
   mx.save();
   mx.translate(P(p[0]), P(p[1]));
-  mx.rotate(-car.ang);
+  mx.rotate(headingUp ? -rotation : -car.ang);
   mx.fillStyle = "#fff";
   mx.strokeStyle = "#1d1238";
   mx.lineWidth = 4;
@@ -1617,6 +1636,18 @@ function drawMini() {
   mx.closePath();
   mx.fill();
   mx.stroke();
+  mx.restore();
+  // North indicator follows the world, but its letter remains upright.
+  mx.font = "bold 18px sans-serif";
+  mx.fillStyle = "#ffffff";
+  mx.strokeStyle = "#251a45";
+  mx.lineWidth = 2;
+  mx.beginPath();
+  mx.arc(s / 2, 12, 11, 0, Math.PI * 2);
+  mx.fillStyle = "#251a45";
+  mx.fill();
+  mx.fillStyle = "#ffffff";
+  uprightText("N", s / 2, 12);
   mx.restore();
 }
 

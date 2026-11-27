@@ -157,7 +157,7 @@ function segmentEvents() {
       curSeg = null;
       sfx("land");
       burst(x, 0.5, z, [0xd8c8a8, 0xffffff], 18, 7, 0.8);
-      banner("Stunt jump!", "+$" + 100 * Math.min(5, 1 + combo));
+      banner("Stunt jump!", testing ? "Test drive" : "+$" + 100 * Math.min(5, 1 + combo));
       collect("ramp", 100);
     }
   } else if (p >= 0.46) {
@@ -256,6 +256,11 @@ function deleteMenu(keepId) {
     id: "d" + l.id, label: "🗑️ Delete " + l.name, say: "Delete " + l.name,
     act: () => confirmChoice("Delete " + l.name + "?", "This cannot be undone.", "Delete city",
       () => {
+        if (savedGame()?.levelId === l.id) {
+          showMenu("City has a saved ride", "Finish or replace that ride before deleting this city.",
+            [{id:"back",label:"Back",say:"Back",act:()=>deleteMenu("d"+l.id)}], "This city has a saved ride. Finish or replace it before deleting the city.");
+          return;
+        }
         if (!persistCities(customLevels().filter(x => x.id !== l.id))) {
           showMenu("Could not delete city", "Storage is unavailable. Your city was not deleted.",
             [{id:"back",label:"Back",say:"Back",act:()=>deleteMenu("d"+l.id)}], "Could not delete city");

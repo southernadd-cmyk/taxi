@@ -50,7 +50,11 @@ function pauseMenu(keepId) {
       say: "Main menu. Your shift is saved.",
       act: titleMenu,
     });
-  items.push({ id: "exit", label: "🚪  Exit Game", say: "Exit game", act: exitGame });
+  items.push({ id: "exit", label: "🚪  Exit Game", say: "Exit game",
+    act: () => {
+      if (testing && ed?.dirty) confirmChoice("Leave test drive?", "Unsaved city changes will be lost if you exit.", "Exit game", exitGame, () => pauseMenu("exit"));
+      else exitGame();
+    } });
   showMenu(
     "Paused",
     shift
@@ -151,7 +155,7 @@ function start(k, levelId, lvObj) {
 }
 function resume(sg) {
   rand = Math.random;
-  enterPlay(sg.modeKey, sg.levelId);
+  enterPlay(sg.modeKey, sg.levelId, sg.citySnapshot || null);
   Object.assign(car, {
     x: sg.car.x,
     y: sg.car.y,

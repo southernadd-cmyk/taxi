@@ -1394,6 +1394,7 @@ function saveGame() {
   store("switchcity-game3", {
     modeKey,
     levelId: level.id,
+    ...(level.builtin ? {} : { citySnapshot: JSON.parse(JSON.stringify(level)) }),
     car: { x: car.x, y: car.y, d: car.d },
     shift,
     heat,

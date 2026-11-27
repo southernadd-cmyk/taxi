@@ -10,6 +10,8 @@ Version 1.0 is the first feature-complete edition. Further updates will focus on
 
 ## Screenshots
 
+Captured directly from the v1.0 game in a desktop browser.
+
 | Main menu | Driving |
 | --- | --- |
 | ![Switch Cab main menu with large, clearly highlighted choices](docs/screenshots/main-menu.png) | ![A taxi at a junction with navigation choices, minimap and passenger information](docs/screenshots/driving.png) |

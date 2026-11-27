@@ -602,13 +602,16 @@ function buildBlock(i) {
     code = level.blocks[i];
   R = rng(1000 + i * 31 + code.length * 7 + code.charCodeAt(0));
   // Separate pavement and kerb tops; retain the 0.30 furnishing floor.
-  const slab = box(SZ, 0.12, SZ, texMat("pave", P.side, 4));
+  // A solid matte surface avoids tiled texture shimmer and moving shadow noise.
+  const slab = box(SZ, 0.12, SZ, basic(P.side, { toneMapped: true }));
   slab.position.set(cx, 0.24, cz);
   slab.castShadow = false;
+  slab.receiveShadow = false;
   g.add(slab);
-  const curb = box(SZ + 0.2, 0.24, SZ + 0.2, std(new THREE.Color(P.side).multiplyScalar(0.75)));
+  const curb = box(SZ + 0.2, 0.24, SZ + 0.2, basic(new THREE.Color(P.side).multiplyScalar(0.75), { toneMapped: true }));
   curb.position.set(cx, 0.10, cz);
   curb.castShadow = false;
+  curb.receiveShadow = false;
   g.add(curb);
   const pc = () => P.b[Math.floor(R() * P.b.length)];
   const I = SZ - 3;
@@ -676,10 +679,13 @@ function buildBlock(i) {
     gr.position.set(cx, 0.35, cz);
     gr.castShadow = false;
     g.add(gr);
-    [0, 1].forEach((k) => {
-      const pth = box(k ? 1.4 : I + 1, 0.12, k ? I + 1 : 1.4, std(0xe8d8b0));
-      pth.position.set(cx, 0.37, cz);
-      pth.castShadow = false;
+    // Form a cross with three non-overlapping surfaces, not two coplanar boxes.
+    const pathLength = (I + 1 - 1.4) / 2;
+    [[I + 1, 1.4, 0], [1.4, pathLength, -(pathLength + 1.4) / 2],
+      [1.4, pathLength, (pathLength + 1.4) / 2]].forEach(([w, d, dz]) => {
+      const pth = box(w, 0.12, d, basic(0xe8d8b0, { toneMapped: true }));
+      pth.position.set(cx, 0.37, cz + dz);
+      pth.castShadow = pth.receiveShadow = false;
       g.add(pth);
     });
     const f = cyl(2, 2.2, 0.8, 20, std(0xddd6e8));

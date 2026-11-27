@@ -3,7 +3,7 @@ const src=fs.readFileSync(path.join(__dirname,"../js/practice.js"),"utf8");
 function advancedTests(src,assert){
  const a=new Function(src+`
  const B=8,DX=[0,1,0,-1],DZ=[-1,0,1,0],car={},scene={remove(){}};
- let shift,modeKey="practice",waiting=[],level,cops=[],heat=0,evade=0,camSnap,menu,spoken,builds=[],caughtDistance=5;
+ let shift,modeKey="practice",waiting=[],level,cops=[],heat=0,evade=0,turnNo=0,camSnap,menu,spoken,builds=[],caughtDistance=5;
  function makeLevel(){return {segs:{},blocks:Array(64).fill("H")}}
  function clearRoadworks(){} function enterPlay(k,i,l){level=l;waiting=[];cops=[]}
  function clearRival(){} function clearCops(){cops=[];evade=0}

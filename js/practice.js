@@ -123,10 +123,9 @@ function practicePoliceSetup(distanceStage) {
   const cop=addCop();
   if(!cop) return;
   Object.assign(cop,{x:distanceStage?0:3,y:distanceStage?3:4,d:1,ang:-Math.PI/2,chasing:true});
-  heat=3;evade=0;
+  // Reset the checkpoint turn clock so the warning matches the real chase plan.
+  heat=3;evade=0;turnNo=0;
   planCops();
-  // A deterministic initial warning, independent of the player's chase speed setting.
-  if(!distanceStage) { cop.plan=1; }
 }
 function practiceStageLabel() {
   const p=shift?.practice;

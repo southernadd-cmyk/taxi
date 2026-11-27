@@ -18,3 +18,22 @@ for(const dare of [{type:"ramp",need:2,have:0,text:"Hit two stunt ramps before y
  const p2=run.offer(dare);run.bar.items[0].act();assert.equal(p2.dare,null);assert.match(run.junction,/normal fare/i);
 }
 console.log("Dare clarity: all four challenge types, repeat, acceptance, decline and persistence passed.");
+
+const dialogueSource=source.slice(source.indexOf("const PASSENGER_VOICES"),source.indexOf("const SEATS ="));
+const dialogue=new Function(dialogueSource+";return {PASSENGER_VOICES,passengerPickupLine,passengerDropLine};")();
+const styles=new Set(),greetings=new Set(),fare={destName:"the park",pay:150,patience:8};
+for(let i=0;i<15;i++){
+ const p={...fare},line=dialogue.passengerPickupLine(p,(i+.5)/15);
+ styles.add(p.voice);greetings.add(line);
+ assert.match(line,/the park, please\. Base fare: 150 dollars\. You have 8 moves\./);
+ assert.ok(dialogue.PASSENGER_VOICES.find(v=>v.id===p.voice).thanks.includes(dialogue.passengerDropLine(p,.5)));
+}
+assert.equal(styles.size,5);assert.equal(greetings.size,15);
+assert.match(dialogue.passengerPickupLine({...fare,patience:null},0),/No time limit/);
+assert.match(dialogue.passengerPickupLine({...fare,getaway:true,destName:"the Hideout"},0),/police.*Hideout.*150 dollars.*8 moves/i);
+assert.match(dialogue.passengerDropLine({...fare,getaway:true},.5),/Hideout/);
+assert.match(dialogue.passengerDropLine({...fare,dare:{have:0,need:2}},.5),/wasn't completed/);
+assert.match(dialogue.passengerDropLine({...fare,dare:{have:2,need:2}},.5),/did the dare/);
+assert.ok(dialogue.passengerDropLine({...fare,voice:"old-save"},.5));
+assert.ok(source.includes("passengerPickupLine(p, getaway ? 0 : rand())")&&source.includes("passengerDropLine(p, rand())"),"original random draw cadence retained");
+console.log("Passenger dialogue: 5 voices, 15 greetings, fare facts, contextual reactions and older saves passed.");

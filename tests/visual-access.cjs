@@ -27,6 +27,35 @@ function visualTests(h,input,city,cam,turns,fx,models,settings){
  assert(models.includes("if (RM) return;")&&models.includes("particles.splice(i, 1); continue;"),"particle emission and existing particles suppressed");
  assert(input.includes("flash: false, motion: false")&&input.includes('behavior: "instant"'),"steady defaults and instant scroll");
  assert(settings.includes('it("motion"')&&settings.includes("applyMotion();"),"switch-accessible motion preference");
+ const settingsHarness=new Function(`let resetArmed=false,RM=false,localAcc={waitForSpeech:true},game={ui:0,diff:0,nav:0,guide:1,music:true,engine:true,speed:1,wait:0,cops:0,cam:0,motion:false,flash:false,gfx:0,outline:1,sfx:true};
+ let current,confirmation,returned=0,saves=0,spoken=[],auto=true,interval=2000;
+ const window={},acc=()=>({auto,interval,wait:localAcc.waitForSpeech}),Voice={enabled:()=>true,name:()=>"Test voice",speak:s=>spoken.push(s),toggle(){},cycle(){}};
+ const Scan={setItems(items,keep){current.items=items;current.keep=keep},retime(){}};
+ const showMenu=(title,sub,items,speech,keep)=>{current={title,sub,items,speech,keep}};
+ const confirmChoice=(title,detail,label,yes,no)=>{confirmation={title,detail,yes,no}};
+ const saveGameSettings=()=>saves++,applyUI=()=>{},applyMotion=()=>{},resize=()=>{},updateHud=()=>{},hints=()=>{},store=()=>{},toggleAuto=()=>{auto=!auto},cycleSpeed=()=>{interval+=1000};
+ ${settings}
+ const back=()=>returned++;
+ return {open:()=>settingsMenu(back),current:()=>current,choose:id=>current.items.find(x=>x.id===id).act(),confirm:()=>confirmation,game,saves:()=>saves,returned:()=>returned,shared:()=>{window.NarbeScanManager={}},auto:()=>auto};
+ `)();
+ const sh=settingsHarness;sh.open();
+ assert(sh.current().items.map(i=>i.id).join(",")==="switches,speech,display,driving,progress,back","settings root categories");
+ const expected={switches:["auto","scan","speechwait"],speech:["tts","voice","guide","music","engine","sfx"],display:["ui","motion","flash","cam","gfx","outline"],driving:["speed","wait","nav","diff","cops"],progress:["reset"]};
+ for(const [category,ids] of Object.entries(expected)){
+   sh.choose(category);assert(sh.current().items.map(i=>i.id).join(",")===[...ids,"back"].join(","),"category membership and ordering: "+category);
+   assert(sh.current().speech.includes(sh.current().title),"category announced");
+   sh.choose("back");assert(sh.current().title==="Settings"&&sh.current().keep===category,"return focus to category");
+ }
+ sh.choose("display");sh.choose("ui");
+ assert(sh.game.ui===1&&sh.saves()===1&&sh.current().keep==="ui"&&sh.current().title==="Display and motion","change saved and focus retained");
+ sh.choose("back");sh.choose("switches");sh.choose("auto");
+ assert(sh.confirm().title==="Use two switches?"&&sh.auto(),"switch mode requires confirmation");
+ sh.confirm().no();assert(sh.current().keep==="auto"&&sh.auto(),"cancel stays in switch controls");
+ sh.choose("auto");sh.confirm().yes();assert(!sh.auto()&&sh.current().keep==="auto","confirmed switch change stays in category");
+ sh.choose("back");sh.choose("progress");sh.choose("reset");assert(sh.confirm().title==="Erase progress?","reset requires confirmation");
+ sh.confirm().no();assert(sh.current().keep==="reset"&&sh.current().title==="Saved progress","cancel reset returns to category");
+ sh.choose("back");sh.shared();sh.choose("switches");assert(!sh.current().items.some(x=>x.id==="speechwait"),"shared hub owns speech wait");
+ sh.choose("back");sh.choose("back");assert(sh.returned()===1,"root back returns to originating menu");
  assert(h.includes('#menuList .opt.on.braked')&&h.includes('outline: 5px dotted #fff'),"menu brake distinct");
  assert(h.includes("max-height: 48dvh")&&h.includes("overflow-y: auto")&&h.includes("max-height: 600px"),"compact layout");
  function lum(hex){return [0,2,4].map(i=>parseInt(hex.slice(i,i+2),16)/255).map(v=>v<=0.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((v,x,i)=>v+x*[.2126,.7152,.0722][i],0)}

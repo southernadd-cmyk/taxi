@@ -70,6 +70,7 @@ function practicePause(keepId) {
   showMenu("Practice paused", "Your cab is waiting.",
     [
       { id: "continue", label: "▶️  Continue", say: "Continue", act: () => { hideMenu(); practiceJunction(); } },
+      { id: "status", label: "🔊 Game information", say: "Game information", act: () => gameStatusMenu(() => practicePause("status")) },
       { id: "help", label: "🔊  Hear instructions", say: "Hear instructions", act: () => Voice.speak(practiceInstruction()) },
       { id: "settings", label: "⚙️  Settings", say: "Settings", act: () => settingsMenu(() => practicePause("settings")) },
       { id: "restart", label: "🔄  Restart practice", say: "Restart practice", act: () => shift.practice ? startAdvancedPractice(shift.practice.kind) : startPractice() },

@@ -27,6 +27,28 @@ function visualTests(h,input,city,cam,turns,fx,models,settings){
  assert(models.includes("if (RM) return;")&&models.includes("particles.splice(i, 1); continue;"),"particle emission and existing particles suppressed");
  assert(input.includes("flash: false, motion: false")&&input.includes('behavior: "instant"'),"steady defaults and instant scroll");
  assert(settings.includes('it("motion"')&&settings.includes("applyMotion();"),"switch-accessible motion preference");
+ const statusSource=fs.readFileSync(path.join(__dirname,"../js/shift.js"),"utf8").split("function pauseMenu(")[0];
+ const statusHarness=new Function(`let modeKey="shift",shift={fuel:12,nitro:2,strikes:1,level:3,earned:120,delivered:2,onboard:[{destName:"Park",patience:8,getaway:true,dare:{have:2,need:5}}]},cash=300,roamCoins=4,nitroArmed=true,heat=3,cops=[{chasing:true}],rival={},waiting=[{x:1,y:2}],car={x:1,y:2,d:1},game={nav:0},MAX_STRIKES=3;
+ const COMPASS=["north","east","south","west"],GOODIES={coins:{name:"coins"}},goodies={1:{item:"coins"}};
+ const currentTarget=()=>({name:"Park",node:[3,2]}),moves=()=>2,routeDir=()=>1,relName=d=>["straight on","right","turn around","left"][(d-car.d+4)%4],valid=()=>true,canGo=(x,y,d)=>d!==0,edgeKey=(x,y,d)=>d,danger=d=>d===2,nearestCop=()=>cops.length?{n:2}:null,rivalWarning=()=>" Rival approaching.",seatsFree=()=>3-shift.onboard.length,urgency=()=>6,dareGoal=()=>"Collect coins",practiceStageLabel=()=>"Practice 1 / 3",practiceInstruction=()=>"Drive to passenger";
+ let menu,spoken,returned=0;const showMenu=(title,sub,items,speech,keep)=>{menu={title,sub,items,speech,keep}},Voice={speak:s=>spoken=s};
+ ${statusSource}
+ const back=()=>returned++;
+ return {sections:statusSections,open:()=>gameStatusMenu(back),menu:()=>menu,choose:id=>menu.items.find(i=>i.id===id).act(),spoken:()=>spoken,returned:()=>returned,compass:()=>game.nav=1,practice:()=>{modeKey="practice";shift.fuel=null;},cruise:()=>{modeKey="cruise";shift=null;cops=[];rival=null;heat=0;}};
+ `)();
+ const st=statusHarness,detail=id=>st.sections().find(s=>s.id===id)?.detail||"";
+ assert(detail("resources").includes("12 moves")&&detail("resources").includes("Nitro armed"),"fuel and nitro spoken");
+ assert(detail("progress").includes("1 of 3 strikes")&&detail("progress").includes("300 dollars"),"shift progress spoken");
+ assert(detail("passenger0").includes("6 spare moves")&&detail("passenger0").includes("2 of 5")&&detail("passenger0").includes("Getaway"),"passenger patience and dare spoken");
+ assert(detail("roads").includes("closed")&&detail("roads").includes("police danger")&&detail("roads").includes("coins"),"road hazards spoken");
+ assert(detail("danger").includes("Wanted level 3")&&detail("danger").includes("Rival"),"police and rival spoken");
+ assert(detail("position").includes("row 3")&&detail("position").includes("GPS: straight on"),"location and GPS spoken");
+ st.compass();assert(detail("position").includes("2 east")&&!detail("position").includes("GPS:"),"compass difficulty respected");
+ st.open();st.choose("resources");assert(st.menu().speech.includes("12 moves"),"details announced on entry");
+ st.choose("repeat");assert(st.spoken()===st.menu().sub,"detail repeat");
+ st.choose("back");assert(st.menu().keep==="resources","restore information topic");st.choose("back");assert(st.returned()===1,"return to pause");
+ st.practice();assert(detail("task").includes("Drive to passenger")&&!detail("progress"),"practice avoids real shift progress");
+ st.cruise();assert(detail("progress").includes("4 coins")&&!detail("seats"),"cruise information without shift");
  const settingsHarness=new Function(`let resetArmed=false,RM=false,localAcc={waitForSpeech:true},game={ui:0,diff:0,nav:0,guide:1,music:true,engine:true,speed:1,wait:0,cops:0,cam:0,motion:false,flash:false,gfx:0,outline:1,sfx:true};
  let current,confirmation,returned=0,saves=0,spoken=[],auto=true,interval=2000;
  const window={},acc=()=>({auto,interval,wait:localAcc.waitForSpeech}),Voice={enabled:()=>true,name:()=>"Test voice",speak:s=>spoken.push(s),toggle(){},cycle(){}};

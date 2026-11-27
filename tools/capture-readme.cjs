@@ -7,11 +7,11 @@ const assert=require("node:assert/strict");
   const out="docs/screenshots";
   fs.mkdirSync(out,{recursive:true});
   try{
-    const page=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1,reducedMotion:"reduce"});
+    const page=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1,reducedMotion:"no-preference"});
     await page.addInitScript(()=>{
       localStorage.setItem("switchcity-access",JSON.stringify({autoScan:false,scanInterval:2000,waitForSpeech:false}));
       localStorage.setItem("switchcity-voice",JSON.stringify({tts:false}));
-      localStorage.setItem("switchcity-settings",JSON.stringify({gfx:1,motion:true,sfx:false,music:false,engine:false}));
+      localStorage.setItem("switchcity-settings",JSON.stringify({gfx:1,cam:0,motion:false,sfx:false,music:false,engine:false}));
     });
     const load=async()=>{
       await page.goto("http://127.0.0.1:8000/",{waitUntil:"domcontentloaded"});
@@ -25,17 +25,12 @@ const assert=require("node:assert/strict");
       await page.screenshot({path:out+"/"+name+".png",timeout:30000});
       assert.ok(fs.statSync(out+"/"+name+".png").size>20000,"capture unexpectedly small: "+name);
     };
+    // Capture only the missing default view; retain all four existing images.
     await load();
-    await snap("main-menu");
     await menu("Start a taxi shift");await menu("Taxi shift. Choose a city");
     await page.locator("#menuList button").first().click({timeout:30000});
     await page.locator("#opts button").first().waitFor({timeout:90000});
-    await snap("driving");
-    await load();await menu("City editor");await menu("Start from a copy of");
-    await page.locator("#opts button").first().waitFor({timeout:90000});
-    await snap("city-editor");
-    await load();await menu("Settings");
-    await page.locator("#menuTitle").filter({hasText:"Settings"}).waitFor();
-    await snap("settings");
+    assert.deepEqual(await page.evaluate(()=>({reduced:RM,camera:game.cam,mode})),{reduced:false,camera:0,mode:"play"},"must use standard chase camera");
+    await snap("driving-chase");
   }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});

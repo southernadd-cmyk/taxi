@@ -23,7 +23,7 @@ jobs:
           node-version: '22'
       - name: Regression tests
         run: |
-          for test in tests/{switch-input,speech-wait,practice,visual-access,navigation,editor,editor-flow,dare}.cjs; do node "$test" || exit 1; done
+          for test in tests/{switch-input,speech-wait,practice,visual-access,navigation,editor,editor-flow,dare,quick-route}.cjs; do node "$test" || exit 1; done
           for script in js/*.js; do node --check "$script" || exit 1; done
       - name: Browser dependencies
         run: |

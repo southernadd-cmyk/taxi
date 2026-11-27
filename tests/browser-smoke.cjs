@@ -66,6 +66,24 @@ const assert = require("node:assert/strict");
     assert.equal(await page.locator("#choicePrompt").isVisible(),false);
     assert.match(await page.locator("#missionText").innerText(),/Collect ten coins.*0\/10/);
     assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem("switchcity-game3")).shift.onboard[0].dare.type),"coins");
+    // Authorise a three-block route in an empty corridor; every block must
+    // consume a normal turn and fuel, then return control at the destination.
+    await page.evaluate(()=>{
+      shift.onboard=[]; clearWaiting(); clearCops(); clearRival();
+      game.nav=0; game.diff=0; heat=0; nitroArmed=false;
+      clearRoadworks(); Object.assign(car,{x:1,y:1,d:1,ang:-Math.PI/2});
+      for(let x=1;x<4;x++) delete goodies[edgeKey(x,1,1)];
+      const w={id:"quick-test",x:4,y:1,dest:[6,6],destName:"the park",pay:100,size:"SHORT",col:0x3ccf6a};
+      makeWaitingVisual(w);waiting.push(w);targetPick=w;shift.fuel=40;
+      // Keep deterministic waiting passengers so no spawn can interrupt.
+      while(waiting.length<WANT_WAITING){const i=waiting.length;waiting.push({id:"other"+i,x:8,y:i,dest:[6,6],destName:"the park",pay:100,size:"SHORT"});}
+      takeTips(); openJunction("Quick journey test.");
+      window.quickStartTurn=turnNo;
+    });
+    await opt("GPS: straight on");
+    await page.waitForFunction(()=>!car.moving && car.x===4 && car.y===1 && turnNo===window.quickStartTurn+3,{},{timeout:30000});
+    assert.equal(await page.evaluate(()=>shift.fuel),37);
+    assert.equal(await page.locator("#opts").getByRole("button",{name:/Pick up/}).count(),1);
     assert.deepEqual(errors,[],"uncaught browser errors");
     await page.screenshot({path:"browser-smoke.png"});
     console.log("Browser smoke: Enter-only practice, city edit/save/test/reload passed.");

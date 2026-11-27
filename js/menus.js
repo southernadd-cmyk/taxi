@@ -54,7 +54,7 @@ function exitGame() {
   );
 }
 function toMenuScene() {
-  if (modeKey === 'practice') { shift = null; modeKey = 'shift'; }
+  if (modeKey === 'practice') { if (shift?.practice?.kind === "police") { clearCops(); heat=0; } shift = null; modeKey = 'shift'; }
   resetMenuStyle();
   clearRoadworks();
   mode = "menu";
@@ -78,6 +78,7 @@ function titleMenu(keepId) {
     });
   items.push(
     { id: "practice", label: "🚕  Learn to drive", say: "Learn to drive. Practise a fare with no pressure.", act: startPractice },
+    { id: "advancedPractice", label: "🎯 Practice challenges", say: "Practice challenges. Carpool, stunts and police evasion.", act: advancedPracticeMenu },
     {
       id: "shift",
       label: "🚕  Start a shift",

@@ -88,6 +88,25 @@ const assert = require("node:assert/strict");
     await page.locator("#opts").getByRole("button",{name:/Pick up/}).waitFor({timeout:10000});
     assert.equal(await page.evaluate(()=>shift.fuel),37);
     assert.equal(await page.locator("#opts").getByRole("button",{name:/Pick up/}).count(),1);
+    // The three optional challenges use real driving and pickups.
+    const saved=await page.evaluate(()=>JSON.stringify([localStorage.getItem("switchcity-game3"),localStorage.getItem("switchcity-cash"),localStorage.getItem("switchcity-earned")]));
+    await opt("Pause"); await menu("Main menu");
+    await menu("Practice challenges"); await menu("Carpool practice");
+    const gps=async()=>{await opt("GPS way");await page.waitForFunction(()=>!car.moving&&Scan.items.length>0,{},{timeout:30000})};
+    await gps();await opt("Pick up your passenger");await gps();await opt("Pick up your passenger");
+    assert.equal(await page.evaluate(()=>shift.onboard.length),2);
+    for(let i=0;i<3;i++)await gps();
+    // From passenger two's junction, the first drop is two moves, second two.
+    if(await page.locator("#menuTitle").innerText()!=="Challenge complete!")await gps();
+    await page.locator("#menuTitle").filter({hasText:"Challenge complete!"}).waitFor({timeout:30000});
+    await menu("More challenges");await menu("Stunt practice");
+    await gps();await gps();await gps();
+    await page.locator("#menuTitle").filter({hasText:"Challenge complete!"}).waitFor({timeout:30000});
+    await menu("More challenges");await menu("Police evasion practice");
+    assert.ok(await page.locator("#opts").getByRole("button",{name:/police danger/i}).count());
+    await gps();await gps();await gps();
+    await page.locator("#menuTitle").filter({hasText:"Challenge complete!"}).waitFor({timeout:30000});
+    assert.equal(await page.evaluate(()=>JSON.stringify([localStorage.getItem("switchcity-game3"),localStorage.getItem("switchcity-cash"),localStorage.getItem("switchcity-earned")])),saved);
     assert.deepEqual(errors,[],"uncaught browser errors");
     await page.screenshot({path:"browser-smoke.png"});
     console.log("Browser smoke: Enter-only practice, city edit/save/test/reload passed.");

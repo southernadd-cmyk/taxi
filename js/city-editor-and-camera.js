@@ -157,7 +157,7 @@ function segmentEvents() {
       curSeg = null;
       sfx("land");
       burst(x, 0.5, z, [0xd8c8a8, 0xffffff], 18, 7, 0.8);
-      banner("Stunt jump!", testing ? "Test drive" : "+$" + 100 * Math.min(5, 1 + combo));
+      banner("Stunt jump!", testing ? "Test drive" : modeKey === "practice" ? "Practice jump" : "+$" + 100 * Math.min(5, 1 + combo));
       collect("ramp", 100);
     }
   } else if (p >= 0.46) {

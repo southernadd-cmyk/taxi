@@ -76,7 +76,7 @@ const assert = require("node:assert/strict");
       const w={id:"quick-test",x:4,y:1,dest:[6,6],destName:"the park",pay:100,size:"SHORT",col:0x3ccf6a};
       makeWaitingVisual(w);waiting.push(w);targetPick=w;shift.fuel=40;
       // Keep deterministic waiting passengers so no spawn can interrupt.
-      while(waiting.length<WANT_WAITING){const i=waiting.length;waiting.push({id:"other"+i,x:8,y:i,dest:[6,6],destName:"the park",pay:100,size:"SHORT"});}
+      while(waiting.length<WANT_WAITING){const i=waiting.length;const other={id:"other"+i,x:8,y:i,dest:[6,6],destName:"the park",pay:100,size:"SHORT",col:0x3ccf6a};makeWaitingVisual(other);waiting.push(other);}
       takeTips(); openJunction("Quick journey test.");
       window.quickStartTurn=turnNo;
     });

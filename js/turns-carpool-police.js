@@ -660,10 +660,10 @@ function openJunction(speech) {
           sp = spareMoves();
         items.unshift({
           id: "pick" + w.id,
-          label: "🙋 Pick up: " + shortName(w.destName) + " $" + w.pay,
+          label: "🙋 Pick up: " + shortName(w.destName) + (practice ? "" : " $" + w.pay),
           sound: "score",
-          focus: "🙋  PICK UP  $" + w.pay,
-          say: `Pick up. ${w.size.toLowerCase()} fare to ${w.destName}, ${w.pay} dollars, ${n} moves away${sp != null ? ", with " + sp + " spare" : ""}.`,
+          focus: practice ? "🙋  PICK UP" : "🙋  PICK UP  $" + w.pay,
+          say: practice ? "Pick up your passenger. No time limit." : `Pick up. ${w.size.toLowerCase()} fare to ${w.destName}, ${w.pay} dollars, ${n} moves away${sp != null ? ", with " + sp + " spare" : ""}.`,
           act: () => {
             if (practice) return practicePickup(w);
             const s = pickUp(w);
@@ -1338,7 +1338,7 @@ function updateHud() {
   mm.style.visibility = mode === "editor" ? "hidden" : "visible";
   const mt = $("#missionText"),
     top = $("#modeName");
-  if (modeKey === 'practice' && mode === 'play') {
+  if (modeKey === 'practice' && mode === 'play' && shift) {
     top.textContent = 'DRIVING PRACTICE · ' + (shift.onboard.length ? '3 / 3' : waiting.some(w => nodeEq([w.x,w.y],car.x,car.y)) ? '2 / 3' : '1 / 3');
     mt.textContent = practiceInstruction();
   } else if (mode === "editor") {

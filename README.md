@@ -10,13 +10,25 @@ Version 1.0 is the first feature-complete edition. Further updates will focus on
 
 ## Screenshots
 
-Captured directly from the v1.0 game in a desktop browser.
+Captured directly from the v1.0 game in a desktop browser. The driving screenshots demonstrate both the standard camera and the reduced-motion accessibility mode, captured with high graphics enabled.
 
-| Main menu | Driving |
+### Driving camera comparison
+
+| Default chase camera | Reduced-motion camera |
 | --- | --- |
-| ![Switch Cab main menu with large, clearly highlighted choices](docs/screenshots/main-menu.png) | ![A taxi at a junction with navigation choices, minimap and passenger information](docs/screenshots/driving.png) |
-| **City editor** | **Accessibility settings** |
-| ![City editor with the editable city and switch-scannable tools](docs/screenshots/city-editor.png) | ![Settings menu showing categories for switch controls, speech, display and driving](docs/screenshots/settings.png) |
+| ![Default chase camera behind the taxi, looking ahead along the road](docs/screenshots/driving-chase.png) | ![Fixed north-up overhead camera showing the taxi, roads and navigation choices](docs/screenshots/driving.png) |
+| Follows behind the taxi and turns with it, with smooth camera movement and stunt effects. | Fixed north-up view from above, with no camera rotation, stunt bounce or zoom; steady lights and reduced animation. |
+
+Both views use the same driving rules, choices, scoring and challenges. The default chase camera is used when reduced motion is off and Camera is set to Chase. To enable the steadier view, open **Settings → Display and motion → Motion**; the game also respects the device's reduced-motion preference. Reduced motion is useful for players who find camera movement or visual effects uncomfortable or distracting.
+
+### Other screens
+
+| Main menu | Accessibility settings |
+| --- | --- |
+| ![Switch Cab main menu with large, clearly highlighted choices](docs/screenshots/main-menu.png) | ![Settings menu showing categories for switch controls, speech, display and driving](docs/screenshots/settings.png) |
+**City editor**
+
+![City editor with the editable city and switch-scannable tools](docs/screenshots/city-editor.png)
 
 ## How to play
 

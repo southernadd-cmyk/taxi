@@ -2,6 +2,8 @@ name: Test and publish Switch Cab
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
@@ -38,6 +40,7 @@ jobs:
           path: browser-smoke.png
           if-no-files-found: ignore
   deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: test
     runs-on: ubuntu-24.04
     timeout-minutes: 5

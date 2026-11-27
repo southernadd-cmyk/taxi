@@ -19,7 +19,7 @@ const assert = require("node:assert/strict");
     assert.equal(await page.locator("#noGL").isVisible(),false,"WebGL required");
     // New standalone session: complete practice with only Enter presses.
     const select = async (label,scope) => {
-      const button=page.locator(scope+" .opt.on").filter({has:page.locator("text="+label)});
+      const button=page.locator(scope+" .opt.on").filter({hasText:label});
       await button.waitFor({timeout:35000});
       await page.keyboard.press("Enter");
       await page.waitForTimeout(150);

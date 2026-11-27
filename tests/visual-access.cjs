@@ -62,7 +62,7 @@ function visualTests(h,input,city,cam,turns,fx,models,settings){
  `)();
  const sh=settingsHarness;sh.open();
  assert(sh.current().items.map(i=>i.id).join(",")==="switches,speech,display,driving,progress,back","settings root categories");
- const expected={switches:["auto","scan","speechwait"],speech:["tts","voice","guide","music","engine","sfx"],display:["ui","motion","flash","cam","gfx","outline"],driving:["speed","wait","nav","diff","cops"],progress:["reset"]};
+ const expected={switches:["auto","scan","speechwait"],speech:["tts","voice","guide","music","engine","sfx"],display:["ui","hud","motion","flash","cam","gfx","outline"],driving:["speed","wait","nav","diff","cops"],progress:["reset"]};
  for(const [category,ids] of Object.entries(expected)){
    sh.choose(category);assert(sh.current().items.map(i=>i.id).join(",")===[...ids,"back"].join(","),"category membership and ordering: "+category);
    assert(sh.current().speech.includes(sh.current().title),"category announced");
@@ -70,6 +70,8 @@ function visualTests(h,input,city,cam,turns,fx,models,settings){
  }
  sh.choose("display");sh.choose("ui");
  assert(sh.game.ui===1&&sh.saves()===1&&sh.current().keep==="ui"&&sh.current().title==="Display and motion","change saved and focus retained");
+ sh.choose("hud");assert(sh.game.simpleHud===true&&sh.saves()===2&&sh.current().keep==="hud","simplified HUD opt-in persisted and focus retained");
+ sh.choose("hud");assert(sh.game.simpleHud===false&&sh.saves()===3,"full HUD restored");
  sh.choose("back");sh.choose("switches");sh.choose("auto");
  assert(sh.confirm().title==="Use two switches?"&&sh.auto(),"switch mode requires confirmation");
  sh.confirm().no();assert(sh.current().keep==="auto"&&sh.auto(),"cancel stays in switch controls");
@@ -78,6 +80,21 @@ function visualTests(h,input,city,cam,turns,fx,models,settings){
  sh.confirm().no();assert(sh.current().keep==="reset"&&sh.current().title==="Saved progress","cancel reset returns to category");
  sh.choose("back");sh.shared();sh.choose("switches");assert(!sh.current().items.some(x=>x.id==="speechwait"),"shared hub owns speech wait");
  sh.choose("back");sh.choose("back");assert(sh.returned()===1,"root back returns to originating menu");
+ const hudSource=turns.slice(turns.indexOf("function simplifiedDrivingHud("),turns.indexOf("/* ---------- save / resume ---------- */"));
+ const hud=new Function(`let mode="play",modeKey="shift",game={cops:1},cash=200,roamCoins=3,level={name:"City"},shift={level:2,strikes:1,fuel:8,nitro:1,earned:25,onboard:[]},heat=3,cops=[{chasing:true}],SEATS=3;
+ const elements={},mm={style:{}},$=id=>elements[id]||=( {classList:{toggle(k,v){this[k]=v}}});
+ const spareMoves=()=>3,urgency=()=>1,shortName=s=>s,dareStatus=()=>"2 of 5",practiceStageLabel=()=>"Practice stage",practiceInstruction=()=>"Practice instruction";
+ ${hudSource}
+ return {render(simple,m="play",k="shift"){game.simpleHud=simple;mode=m;modeKey=k;updateHud();return {simple:elements["#hud"].classList["simple-driving"],top:elements["#modeName"],mission:elements["#missionText"],stars:elements["#stars"]}},passenger(){shift.onboard=[{destName:"Park",patience:2,getaway:true,dare:{}}]}};
+ `)();
+ let hv=hud.render(undefined);assert(!hv.simple&&(hv.mission.innerHTML.match(/Empty seat/g)||[]).length===3,"full HUD default");
+ hv=hud.render(true);assert(hv.simple&&hv.mission.innerHTML.includes("No passengers on board")&&!hv.mission.innerHTML.includes("Empty seat"),"simple HUD removes empty seat cards");
+ hud.passenger();hv=hud.render(true);assert(hv.mission.innerHTML.includes("Park")&&hv.mission.innerHTML.includes("GETAWAY")&&hv.mission.innerHTML.includes("1 spare")&&hv.mission.innerHTML.includes("2 of 5")&&!hv.mission.innerHTML.includes("Empty seat"),"simple HUD preserves occupied passenger warnings and dares");
+ assert(hv.top.innerHTML.includes("⛽ 8")&&hv.top.innerHTML.includes("strike on")&&hv.stars.textContent==="★★★☆☆","fuel, strikes and wanted stars retained");
+ hv=hud.render(false);assert(!hv.simple&&hv.mission.innerHTML.includes("Empty seat"),"full HUD can be restored");
+ hv=hud.render(true,"play","practice");assert(!hv.simple&&hv.mission.textContent==="Practice instruction","practice instructions unaffected");
+ hv=hud.render(true,"editor");assert(!hv.simple&&hv.mission.innerHTML.includes("City"),"editor unaffected");
+ assert(h.includes("#hud.simple-driving #mm")&&h.includes("#hud.simple-driving .pbar"),"optional map and redundant progress bar hidden");
  assert(h.includes('#menuList .opt.on.braked')&&h.includes('outline: 5px dotted #fff'),"menu brake distinct");
  assert(h.includes("max-height: 48dvh")&&h.includes("overflow-y: auto")&&h.includes("max-height: 600px"),"compact layout");
  function lum(hex){return [0,2,4].map(i=>parseInt(hex.slice(i,i+2),16)/255).map(v=>v<=0.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((v,x,i)=>v+x*[.2126,.7152,.0722][i],0)}

@@ -683,6 +683,15 @@
         #hud > div:first-child { max-width: 65vw; }
         #mm { width: 64px; height: 64px; }
       }
+      /* Optional compact driving HUD. Never hides warnings or scan controls. */
+      #hud.simple-driving #mm,
+      #hud.simple-driving .chip.money,
+      #hud.simple-driving .pbar { display: none; }
+      #hud.simple-driving > div:first-child { padding: 8px 10px; border-radius: 14px; }
+      #hud.simple-driving #modeName { gap: 4px; margin-bottom: 4px; }
+      #hud.simple-driving .seat { padding: 4px 8px; margin-top: 4px; gap: 4px 8px; }
+      #hud.simple-driving #cash { font-size: calc(24px * var(--s)); padding: 3px 9px; }
+      #hud.simple-driving #stars:empty { display: none; }
     </style>
   </head>
   <body>
@@ -745,10 +754,10 @@
     <script src="js/imported-models.js"></script>
     <script src="js/visual-effects.js"></script>
     <script src="js/progress.js"></script>
-    <script src="js/turns-carpool-police.js"></script>
+    <script src="js/turns-carpool-police.js?v=simple-hud-1"></script>
     <script src="js/traffic.js"></script>
     <script src="js/menus.js"></script>
-    <script src="js/settings.js?v=categories-1"></script>
+    <script src="js/settings.js?v=simple-hud-2"></script>
     <script src="js/shift.js?v=spoken-status-1"></script>
     <script src="js/practice.js"></script>
     <script src="js/city-editor-and-camera.js"></script>

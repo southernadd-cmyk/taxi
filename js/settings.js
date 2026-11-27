@@ -1,7 +1,7 @@
 const SETTINGS_CATEGORIES = [
   { id: "switches", label: "Switch controls", detail: "Auto scan, scan speed and waiting for speech.", ids: ["auto", "scan", "speechwait"] },
   { id: "speech", label: "Speech and sound", detail: "Voice, spoken directions, music and sounds.", ids: ["tts", "voice", "guide", "music", "engine", "sfx"] },
-  { id: "display", label: "Display and motion", detail: "Text size, camera, reduced motion and graphics.", ids: ["ui", "motion", "flash", "cam", "gfx", "outline"] },
+  { id: "display", label: "Display and motion", detail: "Text size, driving display, camera, reduced motion and graphics.", ids: ["ui", "hud", "motion", "flash", "cam", "gfx", "outline"] },
   { id: "driving", label: "Driving and difficulty", detail: "Car speed, junctions, navigation, passengers and police.", ids: ["speed", "wait", "nav", "diff", "cops"] },
   { id: "progress", label: "Saved progress", detail: "Reset your saved progress if you choose.", ids: ["reset"] },
 ];
@@ -33,6 +33,12 @@ function settingsItems(back, category) {
       saveGameSettings();
       applyUI();
       Voice.speak("Text size " + (game.ui ? "huge" : "large"));
+    }),
+    it("hud", "Driving display: " + (game.simpleHud ? "Simple" : "Full"), () => {
+      game.simpleHud = !game.simpleHud;
+      saveGameSettings();
+      updateHud();
+      Voice.speak(game.simpleHud ? "Simple driving display. Fuel, passengers and warnings stay visible. Map and extra details are hidden. Hear all details in Pause, Game information." : "Full driving display.");
     }),
     it("diff", "Passengers: " + ["Relaxed", "Normal", "Tough"][game.diff], () => {
       game.diff = (game.diff + 1) % 3;

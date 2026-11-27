@@ -1,0 +1,4 @@
+Taxi model by maregajavier (https://sketchfab.com/maregajavier)
+Source: https://sketchfab.com/models/4ee490b39d4e4fda8f4828a98f9ec681
+Licence: CC BY 4.0 (http://creativecommons.org/licenses/by/4.0/)
+Changes: resized, rotated and recoloured in the game.

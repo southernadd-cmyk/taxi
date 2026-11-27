@@ -68,7 +68,7 @@ const assert = require("node:assert/strict");
     assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem("switchcity-game3")).shift.onboard[0].dare.type),"coins");
     // Authorise a three-block route in an empty corridor; every block must
     // consume a normal turn and fuel, then return control at the destination.
-    await page.evaluate(()=>{
+    const fixture=await page.evaluate(()=>{
       shift.onboard=[]; clearWaiting(); clearCops(); clearRival();
       game.nav=0; game.diff=0; heat=0; nitroArmed=false;
       clearRoadworks(); Object.assign(car,{x:1,y:1,d:1,ang:-Math.PI/2});
@@ -79,9 +79,13 @@ const assert = require("node:assert/strict");
       while(waiting.length<WANT_WAITING){const i=waiting.length;const other={id:"other"+i,x:8,y:i,dest:[6,6],destName:"the park",pay:100,size:"SHORT",col:0x3ccf6a};makeWaitingVisual(other);waiting.push(other);}
       takeTips(); openJunction("Quick journey test.");
       window.quickStartTurn=turnNo;
+      return {length:quickRouteLength(1,[4,1]),items:Scan.items.map(i=>({id:i.id,say:i.say}))};
     });
-    await opt("GPS: straight on");
+    assert.equal(fixture.length,3,JSON.stringify(fixture));
+    assert.equal(fixture.items[0].id,"quickRoute",JSON.stringify(fixture));
+    await page.locator("#opts").getByRole("button",{name:/^GPS shortcut\. straight on, 3 blocks/i}).click({timeout:10000});
     await page.waitForFunction(()=>!car.moving && car.x===4 && car.y===1 && turnNo===window.quickStartTurn+3,{},{timeout:30000});
+    await page.locator("#opts").getByRole("button",{name:/Pick up/}).waitFor({timeout:10000});
     assert.equal(await page.evaluate(()=>shift.fuel),37);
     assert.equal(await page.locator("#opts").getByRole("button",{name:/Pick up/}).count(),1);
     assert.deepEqual(errors,[],"uncaught browser errors");

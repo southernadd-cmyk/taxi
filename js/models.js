@@ -583,6 +583,7 @@ function person() {
 const particles = [];
 const partGeo = new THREE.BoxGeometry(0.35, 0.35, 0.35);
 function burst(x, y, z, colors, n = 24, spd = 8, size = 1) {
+  if (RM) return;
   for (let i = 0; i < n; i++) {
     const m = new THREE.Mesh(partGeo, basic(colors[i % colors.length]));
     m.scale.setScalar(size * (0.5 + Math.random()));
@@ -604,6 +605,7 @@ function updateParticles(dt) {
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i];
     p.life -= dt;
+    if (RM) { scene.remove(p.m); p.m.material.dispose(); particles.splice(i, 1); continue; }
     p.v.y -= 18 * dt;
     p.m.position.addScaledVector(p.v, dt);
     if (p.m.position.y < 0.2) {

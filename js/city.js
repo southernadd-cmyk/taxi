@@ -10,7 +10,8 @@ const DX = [0, 1, 0, -1],
   DZ = [-1, 0, 1, 0];
 const SPEEDS = [0.28, 0.42, 0.6];
 const HOLD_MS = 800;
-const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const motionPreference = matchMedia("(prefers-reduced-motion: reduce)");
+let RM = motionPreference.matches;
 function rng(s) {
   return () => {
     s |= 0;

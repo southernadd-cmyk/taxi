@@ -59,7 +59,7 @@ function renderFrame() {
   const th = level && level.theme;
   renderer.toneMappingExposure = EXPO[th] || 0.88;
   if (composer && game.gfx === 1) {
-    bloomPass.strength = BLOOM[th] ?? 0.2;
+    bloomPass.strength = RM ? 0 : (BLOOM[th] ?? 0.2);
     updateOutlines();
     if (gradePass) gradePass.uniforms.vignette.value = mode === "play" ? 0.28 : 0.15;
     composer.render();

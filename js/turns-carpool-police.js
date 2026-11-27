@@ -1566,7 +1566,7 @@ function loop(now) {
       );
       siren = Math.max(0, 1 - dmin / 90);
     }
-  } else npcs.forEach((n) => stepWalker(n, dt * 0.3, wander));
+  } else if (!RM) npcs.forEach((n) => stepWalker(n, dt * 0.3, wander));
   ease(car, dt);
   npcs.forEach((n) => ease(n, dt));
   cops.forEach((c) => ease(c, dt));
@@ -1579,7 +1579,7 @@ function loop(now) {
     const body = playerMesh.userData.body;
     if (jump && curSeg) {
       const f = Math.min(1, Math.max(0, (car.p - 0.38) / 0.42));
-      playerMesh.position.y = Math.sin(Math.PI * f) * (RM ? 2 : 7);
+      playerMesh.position.y = Math.sin(Math.PI * f) * (RM ? 0 : 7);
       body.rotation.x = RM ? 0 : -f * Math.PI * 2;
     } else {
       body.rotation.x = 0;
@@ -1591,7 +1591,7 @@ function loop(now) {
     place(npcMeshes[i], n);
     npcMeshes[i].userData.wheels.forEach((w) => (w.rotation.x -= dt * 6));
   });
-  const flip = game.flash ? ((now / 500) | 0) % 2 : 0;
+  const flip = game.flash && !RM ? ((now / 500) | 0) % 2 : 0;
   cops.forEach((c, i) => {
     const m = copMeshes[i];
     if (!m) return;
@@ -1603,7 +1603,7 @@ function loop(now) {
     u.bg.material.color.setHex(flip ? 0xff2244 : 0x2266ff);
   });
   peds.forEach((p) => {
-    p.t += p.sp * dt * (RM ? 0.5 : 1);
+    p.t += RM ? 0 : p.sp * dt;
     const [x, z, a] = pedPos(p);
     p.m.position.set(x, 0.3, z);
     p.m.rotation.y = a;
@@ -1642,8 +1642,8 @@ function loop(now) {
       if (!a.visible) return;
       const on = cur && cur.d === d,
         dg = a.userData.danger;
-      a.material.color.setHex(on ? (dg ? 0xff3040 : 0xffd23f) : dg ? 0xff3040 : 0xffffff);
-      a.material.emissive.setHex(on ? (dg ? 0xff0000 : 0xffa000) : dg ? 0x800000 : 0xffffff);
+      a.material.color.setHex(on ? 0xffd23f : dg ? 0xff3040 : 0xffffff);
+      a.material.emissive.setHex(on ? 0xffa000 : dg ? 0x800000 : 0xffffff);
       a.material.opacity = on ? 1 : 0.55;
       const sc = on ? 2.1 : 1.3;
       a.scale.set(sc, on ? 2.5 : 1, sc);

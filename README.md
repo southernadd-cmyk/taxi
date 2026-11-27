@@ -23,6 +23,9 @@ GitHub Pages works as is.
 ## Driving practice
 Choose **Learn to drive** from the main menu. Follow GPS to a waiting passenger, pick them up, then deliver them to the park. Wrong turns are fine; there are no deadlines, police, fuel costs or penalties. Practice does not change your saved shift, cash or records. Pause, replay instructions, restart or leave at any junction.
 
+## Visual accessibility
+Settings → Motion can force reduced motion, or follow the device's accessibility preference. Reduced motion uses a fixed north-up camera, steady lights, no stunt spins or particle bursts, and no automatic camera orbit. Police lights default to steady for new players. The game retains all driving choices and scoring. Compact screens use a scrollable choice bar and stable high-contrast highlights.
+
 ## How a turn works
 Every junction is one turn. When the cab moves one block (two with nitro), every police car moves one
 block along the route it showed in advance, and every passenger loses one move of patience. Nothing

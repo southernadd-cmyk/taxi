@@ -85,12 +85,20 @@ function settingsItems(back) {
         ["Police chase off. You cannot get caught.", "Police chase slow.", "Police chase normal."][game.cops],
       );
     }),
-    it("cam", "Camera: " + CAM[game.cam], () => {
+    it("cam", "Camera: " + (RM ? "Top down (reduced motion)" : CAM[game.cam]), () => {
+      if (RM) { Voice.speak("Reduced motion uses a fixed direction top down camera."); return; }
       game.cam = (game.cam + 1) % 3;
       saveGameSettings();
       Voice.speak("Camera " + CAM[game.cam]);
     }),
-    it("flash", "Police lights: " + (game.flash ? "Flashing" : "Steady"), () => {
+    it("motion", "Motion: " + (game.motion ? "Reduced" : RM ? "System (reduced)" : "System"), () => {
+      game.motion = !game.motion;
+      saveGameSettings();
+      applyMotion();
+      Voice.speak(RM ? "Reduced motion. Fixed direction camera and steady effects." : "Motion follows system settings.");
+    }),
+    it("flash", "Police lights: " + (RM ? "Steady (reduced motion)" : game.flash ? "Flashing" : "Steady"), () => {
+      if (RM) { Voice.speak("Police lights stay steady in reduced motion."); return; }
       game.flash = !game.flash;
       saveGameSettings();
       Voice.speak("Police lights " + (game.flash ? "flashing" : "steady, no flashing"));

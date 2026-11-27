@@ -611,6 +611,66 @@
       #menuList .opt.on {
         background: linear-gradient(180deg, #ffe27a, #ffc93f);
       }
+
+      /* Stable, legible switch highlights; the outline does not change the layout. */
+      .opt, #menuList .opt {
+        border: 5px solid #a99bd6;
+        color: #fff;
+        background: #34265d;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        flex-wrap: wrap;
+      }
+      .opt.on, #menuList .opt.on {
+        background: #ffdb55;
+        color: #211532;
+        border-color: #fff;
+        outline: 4px solid #ff4fa3;
+        outline-offset: 1px;
+        box-shadow: inset 0 0 0 3px #211532;
+      }
+      .opt.on.braked { outline: 5px dotted #fff; outline-offset: 2px; }
+      .opt:focus-visible { outline: 4px solid #fff; outline-offset: 2px; }
+      .opt .tag { white-space: normal; }
+      #hud > div:first-child, #cash { background: #180f31; }
+      #menuSub { background: #180f31; border-radius: 12px; padding: 10px 14px; }
+      #menuList { grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); width: min(1180px, 100%); padding: 6px; }
+      #bar { max-height: 48vh; max-height: 48dvh; overflow-y: auto; overscroll-behavior: contain; }
+      #opts { padding: 6px; }
+      #status { max-width: 94vw; width: max-content; text-align: center; }
+      #focus { font-size: clamp(20px, 4vw, calc(64px * var(--s))); white-space: normal; overflow-wrap: anywhere; text-align: center; }
+      .seat.empty { opacity: 1; color: #e6dcff; }
+      .seat.bad { animation: none; }
+      .fuel em { background: #211532; color: #fff; padding: 1px 6px; border-radius: 4px; }
+      :root[data-motion="reduced"] #banner { transition: none; }
+      :root[data-motion="reduced"] .seat.bad { animation: none; }
+      @media (max-width: 700px), (max-height: 600px) {
+        #menu { padding: 10px; }
+        #menuTitle { font-size: clamp(32px, 7vw, 68px); }
+        #menuSub { font-size: calc(18px * var(--s)); margin: 8px 0; }
+        #menuList { gap: 9px; }
+        #menuList .opt, .opt { min-height: max(56px, calc(58px * var(--s))); font-size: calc(20px * var(--s)); padding: 8px 10px; gap: 6px; border-radius: 14px; }
+        #bar { padding: 6px 8px calc(8px + env(safe-area-inset-bottom, 0px)); }
+        #opts { gap: 8px; }
+        .opt { flex: 1 1 42%; }
+        .hint { font-size: calc(15px * var(--s)); margin: 4px; }
+        #focus { display: none; }
+        #hud { padding: 8px; gap: 6px; }
+        #hud > div:first-child { max-width: 70vw; padding: 6px; border-radius: 12px; }
+        #mission { font-size: calc(16px * var(--s)); }
+        #modeName { font-size: calc(13px * var(--s)) !important; gap: 3px; margin-bottom: 3px; }
+        .seat { margin-top: 3px; padding: 3px 5px; gap: 3px; border-left-width: 4px; }
+        .chip { padding: 2px 5px; }
+        #cash { font-size: calc(22px * var(--s)); padding: 3px 6px; }
+        #stars { font-size: calc(18px * var(--s)); min-height: 0; }
+        #mm { width: min(20vw, 100px); height: min(20vw, 100px); border-width: 3px; box-shadow: none; }
+        #banner b { font-size: clamp(28px, 7vw, 60px); }
+        #banner span { font-size: calc(18px * var(--s)); padding: 5px 10px; }
+      }
+      @media (max-height: 420px) {
+        #hud > div:first-child { max-width: 65vw; }
+        #mm { width: 64px; height: 64px; }
+      }
     </style>
   </head>
   <body>

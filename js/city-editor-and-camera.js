@@ -687,7 +687,11 @@ function updateCamera(dt, now) {
       fz = -Math.cos(car.ang);
     const waiting = !car.moving;
     const jh = playerMesh ? playerMesh.position.y : 0;
-    if (game.cam === 0) {
+    if (RM) {
+      // North-up camera: no turning with the taxi, no stunt bounce or zoom.
+      p = new THREE.Vector3(x, 52, z + 0.01);
+      l = new THREE.Vector3(x, 0, z);
+    } else if (game.cam === 0) {
       p = new THREE.Vector3(
         x - fx * (waiting ? 13 : 11),
         (waiting ? 10 : 7) + jh * 0.6,
@@ -733,6 +737,15 @@ function resize() {
 }
 addEventListener("resize", resize);
 new ResizeObserver(resize).observe($("#bar"));
+function applyMotion() {
+  RM = !!game.motion || motionPreference.matches;
+  document.documentElement.dataset.motion = RM ? "reduced" : "standard";
+  camSnap = true;
+  if (RM) setLights(0);
+}
+if (motionPreference.addEventListener) motionPreference.addEventListener("change", applyMotion);
+else if (motionPreference.addListener) motionPreference.addListener(applyMotion);
+applyMotion();
 applyUI();
 hints();
 $("#menuSub").textContent = "Loading the city…";

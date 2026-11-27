@@ -13,7 +13,7 @@ function store(k, v) {
   } catch (e) {}
 }
 const game = Object.assign(
-  { speed: 1, wait: 0, cops: 1, sfx: true, cam: 0, flash: true, gfx: 1, ui: 0, music: true, engine: true },
+  { speed: 1, wait: 0, cops: 1, sfx: true, cam: 0, flash: false, motion: false, gfx: 1, ui: 0, music: true, engine: true },
   load("switchcity-settings", {}),
 );
 function saveGameSettings() {
@@ -213,7 +213,7 @@ const Scan = (() => {
     });
     host.classList.toggle("backstop", !!atBack());
     const on = host.querySelector(".on");
-    if (on) on.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    if (on) on.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
     if (window.onScanRender)
       onScanRender(atBack() ? { focus: "⬅  BACK", say: "Back" } : i >= 0 ? items[i] : null, braked);
   }

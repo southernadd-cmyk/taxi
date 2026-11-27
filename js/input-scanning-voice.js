@@ -86,36 +86,36 @@ if (window.NarbeScanManager && NarbeScanManager.subscribe)
 
 /* ======================= voice (shared manager if present) ======================= */
 const localVoice = Object.assign({ tts: true, voice: "" }, load("switchcity-voice", {}));
+// The partial recorded pack cannot speak arbitrary text. Migrate its old
+// selection to a device voice instead of alternating engines between phrases.
+if (!window.NarbeVoiceManager && localVoice.voice === "__kokoro_emma__") {
+  localVoice.voice = "";
+  store("switchcity-voice", localVoice);
+}
 function localVoices() {
   if (!("speechSynthesis" in window)) return [];
   const v = speechSynthesis.getVoices();
-  const en = v.filter((x) => /^en/i.test(x.lang));
+  const en = v.filter(x => /^en/i.test(x.lang));
   return en.length ? en : v;
 }
-// Static, generated recordings. No neural inference or third-party requests in play.
-const recordedVoiceId = "__kokoro_emma__";
-const recordedClips = Object.create(null);
-// Load the tiny generated index synchronously before this script. No fetch race.
-if (!window.NarbeVoiceManager && typeof window.Audio === "function") {
-  for (const [phrase, file] of Object.entries(window.SwitchCabRecordedClips || {})) {
-    if (typeof file === "string" && /^[a-f0-9]{16}\.mp3$/.test(file)) recordedClips[phrase] = file;
-  }
-}
-let recordedAudio = null;
-function hasRecordedVoice() { return Object.keys(recordedClips).length > 0; }
-function useRecordedVoice() {
-  return hasRecordedVoice() && (!localVoice.voice || localVoice.voice === recordedVoiceId);
-}
+let sessionVoice = null;
 function bestDeviceVoice() {
+  if (sessionVoice) return sessionVoice;
   const voices = localVoices();
   const selected = voices.find(v => v.name === localVoice.voice);
-  if (selected) return selected;
   const british = voices.filter(v => /^en[-_]GB$/i.test(v.lang));
-  return british.find(v => v.localService && /natural|neural|enhanced|premium/i.test(v.name))
+  const natural = v => /natural|neural|enhanced|premium/i.test(v.name);
+  sessionVoice = selected
+    || british.find(v => v.localService && natural(v))
+    || british.find(natural)
+    || british.find(v => /google uk english/i.test(v.name))
     || british.find(v => v.localService)
-    || british.find(v => /natural|neural|enhanced|premium/i.test(v.name))
-    || british[0] || voices.find(v => v.localService && /^en/i.test(v.lang))
-    || voices.find(v => /^en/i.test(v.lang)) || voices[0];
+    || british[0]
+    || voices.find(v => /^en/i.test(v.lang) && natural(v))
+    || voices.find(v => /^en/i.test(v.lang) && v.localService)
+    || voices.find(v => /^en/i.test(v.lang))
+    || voices[0] || null;
+  return sessionVoice;
 }
 let finishLocalSpeech = null;
 const Voice = {
@@ -132,8 +132,8 @@ const Voice = {
     else {
       localVoice.tts = !localVoice.tts;
       if (!localVoice.tts) {
-        finishLocalSpeech?.('disabled');
-        if ('speechSynthesis' in window) speechSynthesis.cancel();
+        finishLocalSpeech?.("disabled");
+        if ("speechSynthesis" in window) speechSynthesis.cancel();
       }
       store("switchcity-voice", localVoice);
     }
@@ -141,12 +141,11 @@ const Voice = {
   cycle() {
     const M = window.NarbeVoiceManager;
     if (M && M.cycleVoice) return M.cycleVoice();
-    const v = localVoices().map(x => x.name);
-    if (hasRecordedVoice()) v.unshift(recordedVoiceId);
-    if (!v.length) return;
-    const current = useRecordedVoice() ? recordedVoiceId : localVoice.voice || bestDeviceVoice()?.name;
-    const i = v.indexOf(current);
-    localVoice.voice = v[(i + 1) % v.length];
+    const voices = localVoices();
+    if (!voices.length) return;
+    const i = voices.findIndex(v => v.name === bestDeviceVoice()?.name);
+    sessionVoice = voices[(i + 1) % voices.length];
+    localVoice.voice = sessionVoice.name;
     store("switchcity-voice", localVoice);
   },
   name() {
@@ -155,37 +154,26 @@ const Voice = {
       const c = M.getCurrentVoice();
       return M.getVoiceDisplayName ? M.getVoiceDisplayName(c) : (c && c.name) || "Default";
     }
-    if (useRecordedVoice()) return "Emma (recorded)";
-    const v = bestDeviceVoice();
-    return v ? v.name.replace(/\(.*?\)/g, "").trim() : "Default";
+    return bestDeviceVoice()?.name || "Device default";
   },
-  // Owned speech completion; never block input and never wait forever.
+  // Every standalone phrase uses the same selected speech synthesis voice.
+  // Inside Benny's Hub, the shared voice manager remains the sole authority.
   speak(text) {
     finishLocalSpeech?.("cancelled");
     Voice.latestTicket = null;
     const M = window.NarbeVoiceManager;
     const p = new Promise((resolve) => {
       if (!text || !Voice.enabled()) { resolve("disabled"); return; }
-      let settled = false, cap, startup, clip;
-      const stopClip = () => {
-        if (!clip) return;
-        const old = clip;
-        clip = null;
-        old.onplaying = old.onended = old.onerror = null;
-        try { old.pause(); } catch (_) {}
-      };
+      let settled = false, cap, startup;
       const finish = (reason) => {
         if (settled) return;
         settled = true;
         clearTimeout(cap);
         clearTimeout(startup);
-        stopClip();
         if (finishLocalSpeech === finish) finishLocalSpeech = null;
         resolve(reason);
       };
-      const file = !M && useRecordedVoice() && recordedClips[text];
-      // Short labels also need time for media startup and the native fallback.
-      cap = setTimeout(() => finish("timeout"), Math.min(10000, (file ? 3200 : 600) + text.length * 70));
+      cap = setTimeout(() => finish("timeout"), Math.min(10000, 600 + text.length * 70));
       if (M && M.speak) {
         try {
           const ticket = M.speak(text);
@@ -196,40 +184,21 @@ const Voice = {
         } catch (_) { finish("error"); }
         return;
       }
+      if (!("speechSynthesis" in window)) { finish("disabled"); return; }
       finishLocalSpeech = finish;
-      const native = () => {
-        if (settled) return;
-        clearTimeout(startup);
-        stopClip();
-        if (!("speechSynthesis" in window)) { finish("disabled"); return; }
-        try {
-          speechSynthesis.cancel();
-          const u = new SpeechSynthesisUtterance(text);
-          u.rate = 1.05;
-          const v = bestDeviceVoice();
-          if (v) { u.voice = v; u.lang = v.lang; }
-          else u.lang = "en-GB";
-          u.onstart = () => clearTimeout(startup);
-          u.onend = () => finish("ended");
-          u.onerror = () => finish("error");
-          startup = setTimeout(() => finish("error"), 1000);
-          speechSynthesis.speak(u);
-        } catch (_) { finish("error"); }
-      };
-      if (!file) { native(); return; }
       try {
-        if ("speechSynthesis" in window) speechSynthesis.cancel();
-        // Reuse the same media element so user-gesture permission can persist.
-        const a = clip = recordedAudio || (recordedAudio = new window.Audio());
-        a.preload = "auto";
-        a.src = "./assets/voice/" + file;
-        const fallback = () => { if (clip === a && !settled) native(); };
-        a.onplaying = () => { if (clip === a) clearTimeout(startup); };
-        a.onended = () => { if (clip === a) finish("ended"); };
-        a.onerror = fallback;
-        startup = setTimeout(fallback, 1600);
-        Promise.resolve(a.play()).catch(fallback);
-      } catch (_) { native(); }
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.rate = 1.05;
+        const v = bestDeviceVoice();
+        if (v) { u.voice = v; u.lang = v.lang; }
+        else u.lang = "en-GB";
+        u.onstart = () => clearTimeout(startup);
+        u.onend = () => finish("ended");
+        u.onerror = () => finish("error");
+        startup = setTimeout(() => finish("error"), 1000);
+        speechSynthesis.speak(u);
+      } catch (_) { finish("error"); }
     });
     Voice.latest = p;
     return p;

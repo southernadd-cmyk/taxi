@@ -5,8 +5,8 @@ function visualTests(h,input,city,cam,turns,fx,models,settings){
  const run=new Function("game","motionPreference","document","setLights","RM","camSnap",a+"\napplyMotion();return {RM,camSnap};");
  for(const [stored,system,expected] of [[false,false,false],[true,false,true],[false,true,true],[true,true,true]]){const doc={documentElement:{dataset:{}}};let light=0;const res=run({motion:stored},{matches:system},doc,()=>light++,false,false);assert(res.RM===expected&&res.camSnap&&doc.documentElement.dataset.motion===(expected?"reduced":"standard")&&light===Number(expected),"motion preference resolution");}
  const surfaces=city.slice(city.indexOf("  const slab = box("),city.indexOf("  const pc = ()"));
- const geometry=new Function(`const SZ=16,cx=10,cz=20,P={side:0},THREE={Color:class{multiplyScalar(){return this}}},texMat=()=>{},std=()=>{};
- const box=(w,h,d)=>({w,h,d,position:{set(x,y,z){Object.assign(this,{x,y,z})}}});
+ const geometry=new Function(`const SZ=16,cx=10,cz=20,P={side:0},THREE={Color:class{multiplyScalar(){return this}}},texMat=()=>({map:true}),std=()=>({lit:true}),basic=(color,options)=>({color,...options});
+ const box=(w,h,d,material)=>({w,h,d,material,position:{set(x,y,z){Object.assign(this,{x,y,z})}}});
  const meshes=[],g={add(m){meshes.push(m)}};
  ${surfaces}
  return meshes;`)();
@@ -15,6 +15,7 @@ function visualTests(h,input,city,cam,turns,fx,models,settings){
  assert(top(slab)-top(curb)>=.07,"pavement and curb top surfaces are separated");
  assert(bottom(slab)>0&&bottom(curb)<0&&top(curb)>bottom(slab),"kerb supports slab above road");
  assert(curb.w>slab.w&&curb.d>slab.d,"kerb remains visible around pavement");
+ for(const m of [slab,curb]) assert(m.material.toneMapped===true&&!m.material.map&&!m.material.lit&&m.castShadow===false&&m.receiveShadow===false,"stable untextured and shadow-free paving");
  const camera=cam.slice(cam.indexOf("function updateCamera("),cam.indexOf("function resize("));
  const harness=new Function("RM","ang",`class V {constructor(x,y,z){Object.assign(this,{x,y,z})}copy(v){Object.assign(this,v);return this}lerp(v,k){return this.copy(v)}};const THREE={Vector3:V},mode="play",EXT=176,car={x:4,y:4,ang,moving:true},game={cam:0,gfx:1},playerMesh={position:{y:7}},pos=()=>[88,88],camPos=new V(),camLook=new V();let camSnap=true;const camera={position:new V(),lookAt(v){this.target=v}},skyMesh={position:new V()},sunL={target:{position:new V()},position:{set(){}}};${camera} updateCamera(.016,9000);return [camera.position.x,camera.position.y,camera.position.z,camera.target.x,camera.target.y,camera.target.z]`);
  assert(JSON.stringify(harness(true,0))===JSON.stringify(harness(true,Math.PI/2)),"north-up camera independent of heading");

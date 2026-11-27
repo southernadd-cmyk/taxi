@@ -26,6 +26,9 @@ Choose **Learn to drive** from the main menu. Follow GPS to a waiting passenger,
 ## Visual accessibility
 Settings → Motion can force reduced motion, or follow the device's accessibility preference. Reduced motion uses a fixed north-up camera, steady lights, no stunt spins or particle bursts, and no automatic camera orbit. Police lights default to steady for new players. The game retains all driving choices and scoring. Compact screens use a scrollable choice bar and stable high-contrast highlights.
 
+## Safe navigation
+Separate confirmation screens start with a blank scan step, then Cancel, then the action. New rides, resets, purchases, restarts and city deletions require confirmation. Settings and nested choices preserve their selection by ID. Turning off Auto Scan warns that two switches are required.
+
 ## How a turn works
 Every junction is one turn. When the cab moves one block (two with nitro), every police car moves one
 block along the route it showed in advance, and every passenger loses one move of patience. Nothing

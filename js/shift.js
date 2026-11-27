@@ -1,5 +1,5 @@
-function pauseMenu() {
-  if (modeKey === 'practice') return practicePause();
+function pauseMenu(keepId) {
+  if (modeKey === 'practice') return practicePause(keepId);
   restartArmed = false;
   clearTimeout(autoT);
   $("#bar").classList.add("hide");
@@ -20,29 +20,14 @@ function pauseMenu() {
       say: "Help",
       act: () => Voice.speak(guidance(true) || "Cruise around. Listen for coins and ramps at each junction."),
     },
-    { id: "settings", label: "⚙️  Settings", say: "Settings", act: () => settingsMenu(pauseMenu) },
+    { id: "settings", label: "⚙️  Settings", say: "Settings", act: () => settingsMenu(() => pauseMenu("settings")) },
   ];
   if (shift) {
-    const restartItem = () => ({
-      id: "restart",
-      label: restartArmed ? "⚠️  Choose again to restart the shift" : "🔄  Restart shift",
-      say: restartArmed ? "Choose again to restart. This shift will be lost." : "Restart shift",
-      act: () => {
-        if (!restartArmed) {
-          restartArmed = true;
-          Voice.speak("Choose again to restart. This shift will be lost.");
-          Scan.setItems(
-            items.map((x) => (x.id === "restart" ? restartItem() : x)),
-            "restart",
-          );
-          return;
-        }
-        restartArmed = false;
-        hideMenu();
-        start(modeKey, level.id);
-      },
+    items.splice(1, 0, {
+      id: "restart", label: "🔄 Restart shift", say: "Restart shift",
+      act: () => confirmChoice("Restart shift?", "Your current shift will be lost.", "Restart shift",
+        () => { hideMenu(); start(modeKey, level.id); }, () => pauseMenu("restart")),
     });
-    items.splice(1, 0, restartItem());
   }
   if (testing)
     items.push({
@@ -71,7 +56,7 @@ function pauseMenu() {
       ? `Level ${shift.level}   Strikes ${shift.strikes} of ${MAX_STRIKES}   $${shift.earned} earned`
       : "Your cab is parked and waiting.",
     items,
-    "Paused",
+    "Paused", keepId,
   );
 }
 function resetMenuStyle() {

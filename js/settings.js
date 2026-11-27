@@ -118,15 +118,16 @@ function settingsItems(back) {
           : "Outlines off",
       );
     }),
-    it("auto", "Auto Scan: " + (a.auto ? "On — One Switch" : "Off — Two Switches"), () => {
-      toggleAuto();
-      hints();
-      Voice.speak(
-        acc().auto
-          ? "Auto scan on. One switch. Enter chooses."
-          : "Auto scan off. Two switches. Space moves, Enter chooses.",
-      );
-    }),
+    { id: "auto", label: "Auto Scan: " + (a.auto ? "On — One Switch" : "Off — Two Switches"),
+      say: a.auto ? "Auto scan on. One switch." : "Auto scan off. Two switches.",
+      act: () => {
+        const change = () => {
+          toggleAuto(); hints(); Scan.retime(); settingsMenu(back, "auto");
+        };
+        if (acc().auto) confirmChoice("Use two switches?", "You will need Space to move and Enter to choose. Cancel if you only use one switch.", "Use two switches", change, () => settingsMenu(back, "auto"));
+        else change();
+      },
+    },
     it("scan", "Scan Speed: " + a.interval / 1000 + " s", () => {
       cycleSpeed();
       Voice.speak("Scan speed " + acc().interval / 1000 + " seconds");
@@ -146,29 +147,23 @@ function settingsItems(back) {
     }),
     {
       id: "reset",
-      label: resetArmed ? "⚠️  Reset Progress: choose again to erase" : "Reset Progress",
-      say: resetArmed ? "Choose again to erase all progress" : "Reset progress",
-      act: () => {
-        if (!resetArmed) {
-          resetArmed = true;
-          Voice.speak("Choose reset again to erase your money, cars and saved job. Your cities are kept.");
-        } else {
-          resetArmed = false;
+      label: "Reset progress",
+      say: "Reset progress",
+      act: () => confirmChoice("Erase progress?", "This removes money, paint, records and your saved ride. Custom cities stay.", "Erase progress",
+        () => {
           cash = 0;
           earned = 0;
-          Object.assign(garage, { owned: ["hatch"], car: "hatch", color: 0 });
+          garage.owned = [0];
+          garage.livery = 0;
+          Object.keys(records).forEach(k => delete records[k]);
+          Object.keys(TIPS).forEach(k => delete TIPS[k]);
           saveProgress();
-          try {
-            ["switchcity-game", "switchcity-game2", "switchcity-game3", "switchcity-tips"].forEach((k) =>
-              localStorage.removeItem(k),
-            );
-            for (const k in TIPS) delete TIPS[k];
-          } catch (e) {}
-          updateHud();
-          Voice.speak("Progress erased.");
-        }
-        Scan.setItems(settingsItems(back), "reset");
-      },
+          store("switchcity-records", records);
+          store("switchcity-tips", TIPS);
+          try { ["switchcity-game", "switchcity-game2", "switchcity-game3"].forEach(k => localStorage.removeItem(k)); } catch (_) {}
+          shift = null;
+          titleMenu();
+        }, () => settingsMenu(back, "reset")),
     },
     {
       id: "back",
@@ -185,7 +180,7 @@ function settingsRefresh(back, id) {
   resetArmed = false;
   Scan.setItems(settingsItems(back), id);
 }
-function settingsMenu(back) {
+function settingsMenu(back, keepId) {
   resetArmed = false;
-  showMenu("Settings", "Choose a setting to change it.", settingsItems(back), "Settings");
+  showMenu("Settings", "Choose a setting to change it.", settingsItems(back), "Settings", keepId);
 }

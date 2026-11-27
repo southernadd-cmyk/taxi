@@ -196,20 +196,31 @@ const Scan = (() => {
     backing = false;
   const isActive = () => items.length > 0;
   const atBack = () => group && i === items.length;
+  let renderedItems = null, renderedHost = null, buttons = [];
+  const available = list => list.filter(it => !it.hidden && !it.disabled);
   function render() {
     if (!host) return;
-    host.innerHTML = "";
-    items.forEach((it, k) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.tabIndex = -1;
-      b.className = "opt" + (k === i ? " on" : "") + (k === i && braked ? " braked" : "");
-      b.innerHTML = it.html || it.label;
-      b.setAttribute("aria-label", it.say || it.label);
-      b.addEventListener("click", () => {
-        direct(k);
+    if (renderedItems !== items || renderedHost !== host) {
+      host.innerHTML = "";
+      renderedItems = items;
+      renderedHost = host;
+      const list = items;
+      buttons = items.map((it, k) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.tabIndex = -1;
+        if (it.html) b.innerHTML = it.html;
+        else b.textContent = it.label;
+        b.setAttribute("aria-label", it.say || it.label);
+        b.addEventListener("click", () => {
+          if (items === list && host === renderedHost) direct(k);
+        });
+        host.appendChild(b);
+        return b;
       });
-      host.appendChild(b);
+    }
+    buttons.forEach((b,k) => {
+      b.className = "opt" + (k === i ? " on" : "") + (k === i && braked ? " braked" : "");
     });
     host.classList.toggle("backstop", !!atBack());
     const on = host.querySelector(".on");
@@ -246,13 +257,13 @@ const Scan = (() => {
       return;
     }
     const it = items[i];
-    pending = Voice.speak(it.say || it.label);
+    pending = it ? Voice.speak(it.say || it.label) : null;
   }
   function move(dir, auto) {
     const n = items.length;
     if (!n) return;
     if (group) {
-      i = (i + dir + n + 1) % (n + 1);
+      i = i === -1 ? (dir > 0 ? 0 : n) : (i + dir + n + 1) % (n + 1);
       render();
       if (atBack()) sfx("hover", 0.6);
       else scanFocus(items[i]);
@@ -331,7 +342,7 @@ const Scan = (() => {
     resetKeys();
     clearTimers();
     labelTok++;
-    items = list;
+    items = available(list);
     host = el;
     parked = false;
     braked = false;
@@ -351,41 +362,54 @@ const Scan = (() => {
     },
     isActive,
     // a fresh root menu or junction: starts on the silent blank step with a full interval
-    open(list, el, titleSpeech) {
+    open(list, el, titleSpeech, keepId) {
       reset(list, el);
       group = null;
-      i = -1;
+      i = keepId == null ? -1 : items.findIndex(x => x.id === keepId);
       render();
       pending = titleSpeech ? Voice.speak(titleSpeech) : null;
+      if (i >= 0) { scanFocus(items[i]); announce(); }
       schedule();
     },
     // a row inside a task: loops through its items and one Back stop; startId re-lands on an item
     enterGroup(list, el, onBack, startId, speech) {
       reset(list, el);
       group = { back: onBack };
-      const k = startId ? list.findIndex((x) => x.id === startId) : -1;
-      i = k >= 0 ? k : 0;
+      const k = startId ? items.findIndex((x) => x.id === startId) : -1;
+      i = k >= 0 ? k : items.length ? 0 : -1;
       render();
       if (speech) {
         pending = Voice.speak(speech).then(() => {});
       } else {
-        scanFocus(items[i]);
+        if (items[i]) scanFocus(items[i]);
         announce();
       }
       schedule();
     },
     // in-place redraw keeping the same item by id
     setItems(list, keepId) {
-      items = list;
-      const k = list.findIndex((x) => x.id === keepId);
-      i = k >= 0 ? k : group ? 0 : -1;
+      const id = keepId ?? items[i]?.id;
+      const wasBack = atBack();
+      const prior = items[i];
+      items = available(list);
+      i = wasBack && keepId == null ? items.length : items.findIndex(x => x.id === id);
+      if (i < 0 || prior?.id !== items[i]?.id) {
+        resetKeys();
+        labelTok++;
+        braked = false;
+        pending = null;
+      }
       render();
+      schedule();
     },
     close() {
       resetKeys();
       clearTimers();
       labelTok++;
       items = [];
+      renderedItems = null;
+      renderedHost = null;
+      buttons = [];
       i = -1;
       group = null;
       braked = false;
@@ -397,6 +421,10 @@ const Scan = (() => {
       $("#status").classList.add("hide");
     },
     retime() {
+      if (!acc().auto && (braked || parked)) {
+        braked = false; parked = false; brakeResume = false;
+        $("#status").classList.add("hide"); render();
+      }
       if (items.length) schedule();
     },
     spaceDown() {

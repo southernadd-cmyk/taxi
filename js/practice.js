@@ -60,15 +60,15 @@ function practiceArrive() {
   refreshMarkers();
   practiceJunction();
 }
-function practicePause() {
+function practicePause(keepId) {
   hideArrows();
   showMenu("Practice paused", "Your cab is waiting.",
     [
       { id: "continue", label: "▶️  Continue", say: "Continue", act: () => { hideMenu(); practiceJunction(); } },
       { id: "help", label: "🔊  Hear instructions", say: "Hear instructions", act: () => Voice.speak(practiceInstruction()) },
-      { id: "settings", label: "⚙️  Settings", say: "Settings", act: () => settingsMenu(practicePause) },
+      { id: "settings", label: "⚙️  Settings", say: "Settings", act: () => settingsMenu(() => practicePause("settings")) },
       { id: "restart", label: "🔄  Restart practice", say: "Restart practice", act: startPractice },
       { id: "back", label: "🏠  Main menu", say: "Main menu", act: titleMenu },
       { id: "exit", label: "🚪  Exit game", say: "Exit game", act: exitGame },
-    ], "Practice paused.");
+    ], "Practice paused.", keepId);
 }

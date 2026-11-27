@@ -206,7 +206,7 @@ function hideEditorMarks() {
     hlLabel = null;
   }
 }
-function editorMenu() {
+function editorMenu(keepId) {
   toMenuScene();
   const items = [
     {
@@ -249,48 +249,24 @@ function editorMenu() {
     },
     { id: "back", label: "⬅️  Back", say: "Back", act: titleMenu },
   );
-  showMenu("City editor", "Build your own city, then play it in any mode.", items, "City editor");
+  showMenu("City editor", "Build your own city, then play it in any mode.", items, "City editor", keepId);
 }
-let delArmed = null;
-function deleteMenu(keep) {
-  const items = customLevels().map((l) => ({
-    id: "d" + l.id,
-    label: (delArmed === l.id ? "⚠️  Choose again to delete " : "🗑️  ") + l.name,
-    say: delArmed === l.id ? "Choose again to delete " + l.name : "Delete " + l.name,
-    act: () => {
-      if (delArmed !== l.id) {
-        delArmed = l.id;
-        Voice.speak("Choose again to delete " + l.name + ". This cannot be undone.");
-        Scan.setItems(deleteMenu(true), "d" + l.id);
-        return;
-      }
-      store(
-        "switchcity-levels",
-        customLevels().filter((x) => x.id !== l.id),
-      );
-      delArmed = null;
-      Voice.speak(l.name + " deleted.");
-      editorMenu();
-    },
+function deleteMenu(keepId) {
+  const items = customLevels().map(l => ({
+    id: "d" + l.id, label: "🗑️ Delete " + l.name, say: "Delete " + l.name,
+    act: () => confirmChoice("Delete " + l.name + "?", "This cannot be undone.", "Delete city",
+      () => { store("switchcity-levels", customLevels().filter(x => x.id !== l.id)); editorMenu("del"); },
+      () => deleteMenu("d" + l.id)),
   }));
-  items.push({
-    id: "back",
-    label: "⬅️  Back",
-    say: "Back",
-    act: () => {
-      delArmed = null;
-      editorMenu();
-    },
-  });
-  if (keep) return items;
-  showMenu("Delete a city", "", items, "Delete a city");
+  items.push({ id: "back", label: "⬅️ Back", say: "Back", act: () => editorMenu("del") });
+  showMenu("Delete a city", "", items, "Delete a city", keepId);
 }
 function shareWarning() {
   showMenu(
     "Warning",
     "The sharing screen needs a mouse and keyboard. You will not be able to scan and select with your switch there.",
     [
-      { id: "cancel", label: "⬅️  Cancel", say: "Cancel. Go back.", act: editorMenu },
+      { id: "cancel", label: "⬅️  Cancel", say: "Cancel. Go back.", act: () => editorMenu("share") },
       { id: "go", label: "🖱️  Continue (mouse needed)", say: "Continue. Mouse needed.", act: openShare },
     ],
     "Warning. The sharing screen needs a mouse and keyboard. You will not be able to scan and select with your switch there. Cancel. Continue.",
@@ -334,7 +310,7 @@ $("#shImport").onclick = () => {
 };
 $("#shClose").onclick = () => {
   $("#share").classList.add("hide");
-  editorMenu();
+  editorMenu("share");
 };
 function nextName() {
   return "My City " + (customLevels().length + 1);
@@ -446,7 +422,7 @@ function saveCity() {
 }
 function leaveEditor() {
   if (!ed.dirty) {
-    titleMenu();
+    editorMenu();
     return;
   }
   showMenu(
@@ -460,10 +436,10 @@ function leaveEditor() {
         say: "Save and leave",
         act: () => {
           saveCity();
-          titleMenu();
+          editorMenu();
         },
       },
-      { id: "lose", label: "🗑️  Leave without saving", say: "Leave without saving", act: titleMenu },
+      { id: "lose", label: "🗑️  Leave without saving", say: "Leave without saving", act: () => confirmChoice("Discard changes?", "Unsaved changes will be lost.", "Discard changes", () => editorMenu(), leaveEditor) },
     ],
     "You have changes that are not saved. Keep editing. Save and leave. Leave without saving.",
   );

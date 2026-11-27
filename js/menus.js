@@ -1,6 +1,6 @@
 /* ======================= screens ======================= */
 const menuOpen = () => !$("#menu").classList.contains("hide");
-function showMenu(title, sub, items, speech) {
+function showMenu(title, sub, items, speech, keepId) {
   clearTimeout(autoT);
   $("#menu").classList.remove("hide");
   $("#bar").classList.add("hide");
@@ -8,7 +8,18 @@ function showMenu(title, sub, items, speech) {
   $("#menuTitle").textContent = title;
   $("#menuSub").textContent = sub;
   hints();
-  Scan.open(items, $("#menuList"), speech);
+  Scan.open(items, $("#menuList"), speech, keepId);
+}
+function confirmChoice(title, detail, actionLabel, onConfirm, onCancel) {
+  showMenu(title, detail, [
+    { id: "cancel", label: "⬅️ Cancel", say: "Cancel. Keep things as they are.", act: onCancel },
+    { id: "confirm", label: actionLabel, say: actionLabel, act: onConfirm },
+  ], title + ". " + detail);
+}
+function startNewShift(k, levelId, back) {
+  if (!savedGame()) return start(k, levelId);
+  confirmChoice("Replace saved ride?", "Starting a new ride replaces the saved ride. Your money and records are kept.",
+    "Start new ride", () => start(k, levelId), back);
 }
 function hideMenu() {
   $("#menu").classList.add("hide");
@@ -45,7 +56,7 @@ function toMenuScene() {
   hideEditorMarks();
   clearWaiting();
 }
-function titleMenu() {
+function titleMenu(keepId) {
   toMenuScene();
   resetArmed = false;
   const items = [];
@@ -79,13 +90,13 @@ function titleMenu() {
     },
     { id: "editor", label: "🏗️  City editor", say: "City editor. Build your own city.", act: editorMenu },
     { id: "how", label: "❓  How to Play", say: "How to play", act: () => howTo(titleMenu) },
-    { id: "settings", label: "⚙️  Settings", say: "Settings", act: () => settingsMenu(titleMenu) },
+    { id: "settings", label: "⚙️  Settings", say: "Settings", act: () => settingsMenu(() => titleMenu("settings")) },
     { id: "credits", label: "📜  Credits", say: "Credits", act: creditsMenu },
     { id: "exit", label: "🚪  Exit Game", say: "Exit game", act: exitGame },
   );
-  showMenu("Switch Cab", `${rankOf(earned)}   $${cash}`, items, "Switch Cab. Main menu.");
+  showMenu("Switch Cab", `${rankOf(earned)}   $${cash}`, items, "Switch Cab. Main menu.", keepId);
 }
-function shiftMenu() {
+function shiftMenu(keepId) {
   showMenu(
     "Taxi shift",
     "Three strikes and your shift is over.",
@@ -104,14 +115,14 @@ function shiftMenu() {
           (records["daily:" + todayStr() + ":" + game.diff]
             ? " Your best today is " + records["daily:" + todayStr() + ":" + game.diff] + " dollars."
             : ""),
-        act: () => start("daily"),
+        act: () => startNewShift("daily", null, () => shiftMenu("daily")),
       },
-      { id: "back", label: "⬅️  Back", say: "Back", act: titleMenu },
+      { id: "back", label: "⬅️  Back", say: "Back", act: () => titleMenu("shift") },
     ],
-    "Taxi shift",
+    "Taxi shift", keepId,
   );
 }
-function cityMenu(k) {
+function cityMenu(k, keepId) {
   const items = allLevels().map((l) => {
     const rec = k === "shift" ? records[l.id + ":" + game.diff] : 0;
     return {
@@ -124,11 +135,11 @@ function cityMenu(k) {
         ")" +
         (rec ? "   🏆 $" + rec : ""),
       say: l.name + ", " + PALETTES[l.theme].name + (rec ? ". Your record is " + rec + " dollars" : ""),
-      act: () => start(k, l.id),
+      act: () => startNewShift(k, l.id, () => cityMenu(k, 'lv' + l.id)),
     };
   });
-  items.push({ id: "back", label: "⬅️  Back", say: "Back", act: k === "shift" ? shiftMenu : titleMenu });
-  showMenu("Choose a city", "", items, "Choose a city");
+  items.push({ id: "back", label: "⬅️  Back", say: "Back", act: k === "shift" ? () => shiftMenu("shift") : () => titleMenu("cruise") });
+  showMenu("Choose a city", "", items, "Choose a city", keepId);
 }
 const HOW =
   "You drive a taxi with three seats. The game moves in turns: every time you choose a way at a junction, your cab moves one block, every police car moves one block, and every passenger loses one move of patience. Nothing is timed. People waiting for a cab are labelled long, medium or short. Pick up to three, then plan the best order to drop them off. If a passenger runs out of patience, they walk out, and that is a strike. Three strikes ends your shift. Your cab also uses one fuel every move, and each drop-off refuels it, more for quick deliveries. On Relaxed there is no fuel limit. From level 3, patrol cars drive around the city. Get within a few moves of one and it spots you and gives chase. Police show their next move with red arrows, and a road marked police danger, with an alarm sound, will get you caught. Stay five moves away from every chasing car for two turns to lose them. Chasing cars sometimes stop to wait, which is your chance. Coins, ramps and crates earn tips, bigger with more passengers on board. Passengers may offer a dare for double pay. When you drop someone off, every other passenger still in the cab adds a quarter to the fare, and fares in a row without a strike build a streak. From level 2 a rival cab races you for waiting fares, with purple arrows showing its next move. Nitro moves you two blocks in one turn. Every three fares the city gets busier. Your cab also uses one fuel every move. Each drop-off refuels it, more for quick deliveries, so you cannot just hide from the police forever. Run out and the shift ends.";
@@ -182,7 +193,7 @@ function creditsMenu() {
 function garageItems() {
   const items = LIVERIES.map(([name, col, price], i) => {
     const own = garage.owned.includes(i),
-      armed = buyArmed === i;
+      armed = false;
     if (own)
       return {
         id: "l" + i,
@@ -208,22 +219,18 @@ function garageItems() {
           sfx("bust", 0.5);
           return;
         }
-        if (!armed) {
-          buyArmed = i;
-          Voice.speak("Choose again to buy " + name);
-          garageRefresh("l" + i);
-          return;
-        }
-        buyArmed = null;
-        cash -= price;
-        garage.owned.push(i);
-        garage.livery = i;
-        saveProgress();
-        sfx("cash");
-        sfx("win");
-        showGarageCar();
-        Voice.speak("You bought " + name + "!");
-        garageRefresh("l" + i);
+        confirmChoice("Buy " + name + "?", "This costs " + price + " dollars.", "Buy " + name,
+          () => {
+            if (cash < price) return openGarage("l" + i);
+            cash -= price;
+            garage.owned.push(i);
+            garage.livery = i;
+            saveProgress();
+            sfx("cash");
+            sfx("win");
+            openGarage("l" + i);
+          }, () => openGarage("l" + i));
+
       },
     };
   });
@@ -233,7 +240,7 @@ function garageItems() {
     say: "Back",
     act: () => {
       buyArmed = null;
-      titleMenu();
+      titleMenu("garage");
     },
   });
   return items;
@@ -250,10 +257,10 @@ function showGarageCar() {
   Object.assign(car, { x: 4, y: 4, d: 1, p: 0, moving: false, ang: -Math.PI / 2 });
   playerMesh.visible = true;
 }
-function openGarage() {
+function openGarage(keepId) {
   buyArmed = null;
   mode = "garage";
-  showMenu("Paint shop", `You have $${cash}`, garageItems(), "Paint shop. You have " + cash + " dollars.");
+  showMenu("Paint shop", `You have $${cash}`, garageItems(), "Paint shop. You have " + cash + " dollars.", keepId);
   showGarageCar();
   $("#menu").style.background =
     "linear-gradient(90deg,rgba(10,6,24,.95) 0,rgba(10,6,24,.85) 45%,rgba(10,6,24,0) 75%)";

@@ -1415,7 +1415,12 @@ function rollRoadworks(list) {
 }
 
 /* ---------- HUD ---------- */
+function simplifiedDrivingHud() {
+  return !!game.simpleHud && mode === "play" && modeKey !== "practice";
+}
 function updateHud() {
+  const simple = simplifiedDrivingHud();
+  $("#hud").classList.toggle("simple-driving", simple);
   $("#cash").textContent = "$" + cash.toLocaleString();
   mm.style.visibility = mode === "editor" ? "hidden" : "visible";
   const mt = $("#missionText"),
@@ -1453,8 +1458,12 @@ function updateHud() {
         "</div>"
       );
     });
-    for (let i = shift.onboard.length; i < SEATS; i++)
-      cards.push(`<div class="seat empty"><span class="num">${i + 1}</span>Empty seat</div>`);
+    if (simple) {
+      if (!cards.length) cards.push('<div class="seat empty">No passengers on board</div>');
+    } else {
+      for (let i = shift.onboard.length; i < SEATS; i++)
+        cards.push(`<div class="seat empty"><span class="num">${i + 1}</span>Empty seat</div>`);
+    }
     mt.innerHTML = cards.join("");
   }
   const hot = Math.max(heat, cops.some((c) => c.chasing) ? 3 : 0);

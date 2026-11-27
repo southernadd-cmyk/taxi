@@ -601,12 +601,13 @@ function buildBlock(i) {
     cz = (by + 0.5) * NODE,
     code = level.blocks[i];
   R = rng(1000 + i * 31 + code.length * 7 + code.charCodeAt(0));
-  const slab = box(SZ, 0.3, SZ, texMat("pave", P.side, 4));
-  slab.position.set(cx, 0.15, cz);
+  // Separate pavement and kerb tops; retain the 0.30 furnishing floor.
+  const slab = box(SZ, 0.12, SZ, texMat("pave", P.side, 4));
+  slab.position.set(cx, 0.24, cz);
   slab.castShadow = false;
   g.add(slab);
-  const curb = box(SZ + 0.2, 0.32, SZ + 0.2, std(new THREE.Color(P.side).multiplyScalar(0.75)));
-  curb.position.set(cx, 0.14, cz);
+  const curb = box(SZ + 0.2, 0.24, SZ + 0.2, std(new THREE.Color(P.side).multiplyScalar(0.75)));
+  curb.position.set(cx, 0.10, cz);
   curb.castShadow = false;
   g.add(curb);
   const pc = () => P.b[Math.floor(R() * P.b.length)];

@@ -45,3 +45,6 @@ See CREDITS.md for model licences.
 Copy the game directory into `bennyshub/apps/games/SWITCHCAB/` in the Hub repository (keep the js and assets directories). When served under `/bennyshub/`, it loads the Hub's shared platform, scan controller, voice and SafeAudio modules from the same origin. The standalone GitHub Pages version keeps local preferences; cross-origin browser storage cannot share settings with the Hub. Register the game in the Hub separately. No Hub repository files are modified by this project.
 
 Editor test drives never change cash, ranks or saved rides. City import validates the grid, theme, road items and starting point, and failed writes preserve the draft. Sharing codes remains a caregiver mouse/keyboard tool behind a warning.
+
+## Voice settings
+Standalone Switch Cab offers Emma, a British English recorded Kokoro voice for common menu and driving phrases. Other announcements use the selected device speech engine. Choose a device voice instead in Settings → Speech and sound → Voice. Inside Benny’s Hub, Switch Cab delegates voice selection, enabled state, rate, pitch, volume and speech completion to the shared NarbeVoiceManager; the recorded voice is not injected into the Hub's voice list. Voice assets live under `assets/voice/` and are generated separately from normal deployment.

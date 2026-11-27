@@ -92,6 +92,32 @@ function localVoices() {
   const en = v.filter((x) => /^en/i.test(x.lang));
   return en.length ? en : v;
 }
+// Static, generated recordings. No neural inference or third-party requests in play.
+const recordedVoiceId = "__kokoro_emma__";
+let recordedClips = Object.create(null);
+if (!window.NarbeVoiceManager && typeof window.fetch === "function" && typeof window.Audio === "function") {
+  window.fetch("./assets/voice/manifest.json").then(r => r.ok ? r.json() : null).then(m => {
+    if (!m || typeof m.clips !== "object" || !m.clips) return;
+    for (const [phrase, file] of Object.entries(m.clips)) {
+      if (typeof file === "string" && /^[a-f0-9]{16}\.mp3$/.test(file)) recordedClips[phrase] = file;
+    }
+  }).catch(() => {});
+}
+function hasRecordedVoice() { return Object.keys(recordedClips).length > 0; }
+function useRecordedVoice() {
+  return hasRecordedVoice() && (!localVoice.voice || localVoice.voice === recordedVoiceId);
+}
+function bestDeviceVoice() {
+  const voices = localVoices();
+  const selected = voices.find(v => v.name === localVoice.voice);
+  if (selected) return selected;
+  const british = voices.filter(v => /^en[-_]GB$/i.test(v.lang));
+  return british.find(v => v.localService && /natural|neural|enhanced|premium/i.test(v.name))
+    || british.find(v => v.localService)
+    || british.find(v => /natural|neural|enhanced|premium/i.test(v.name))
+    || british[0] || voices.find(v => v.localService && /^en/i.test(v.lang))
+    || voices.find(v => /^en/i.test(v.lang)) || voices[0];
+}
 let finishLocalSpeech = null;
 const Voice = {
   latest: null,
@@ -116,10 +142,12 @@ const Voice = {
   cycle() {
     const M = window.NarbeVoiceManager;
     if (M && M.cycleVoice) return M.cycleVoice();
-    const v = localVoices();
+    const v = localVoices().map(x => x.name);
+    if (hasRecordedVoice()) v.unshift(recordedVoiceId);
     if (!v.length) return;
-    const i = v.findIndex((x) => x.name === localVoice.voice);
-    localVoice.voice = v[(i + 1) % v.length].name;
+    const current = useRecordedVoice() ? recordedVoiceId : localVoice.voice || bestDeviceVoice()?.name;
+    const i = v.indexOf(current);
+    localVoice.voice = v[(i + 1) % v.length];
     store("switchcity-voice", localVoice);
   },
   name() {
@@ -128,7 +156,8 @@ const Voice = {
       const c = M.getCurrentVoice();
       return M.getVoiceDisplayName ? M.getVoiceDisplayName(c) : (c && c.name) || "Default";
     }
-    const v = localVoices().find((x) => x.name === localVoice.voice);
+    if (useRecordedVoice()) return "Emma (recorded)";
+    const v = bestDeviceVoice();
     return v ? v.name.replace(/\(.*?\)/g, "").trim() : "Default";
   },
   // Owned speech completion; never block input and never wait forever.
@@ -138,12 +167,20 @@ const Voice = {
     const M = window.NarbeVoiceManager;
     const p = new Promise((resolve) => {
       if (!text || !Voice.enabled()) { resolve("disabled"); return; }
-      let settled = false, cap, startup;
+      let settled = false, cap, startup, clip;
+      const stopClip = () => {
+        if (!clip) return;
+        const old = clip;
+        clip = null;
+        old.onplaying = old.onended = old.onerror = null;
+        try { old.pause(); } catch (_) {}
+      };
       const finish = (reason) => {
         if (settled) return;
         settled = true;
         clearTimeout(cap);
         clearTimeout(startup);
+        stopClip();
         if (finishLocalSpeech === finish) finishLocalSpeech = null;
         resolve(reason);
       };
@@ -158,20 +195,38 @@ const Voice = {
         } catch (_) { finish("error"); }
         return;
       }
-      if (!("speechSynthesis" in window)) { finish("disabled"); return; }
       finishLocalSpeech = finish;
+      const native = () => {
+        if (settled) return;
+        clearTimeout(startup);
+        stopClip();
+        if (!("speechSynthesis" in window)) { finish("disabled"); return; }
+        try {
+          speechSynthesis.cancel();
+          const u = new SpeechSynthesisUtterance(text);
+          u.rate = 1.05;
+          const v = bestDeviceVoice();
+          if (v) { u.voice = v; u.lang = v.lang; }
+          else u.lang = "en-GB";
+          u.onstart = () => clearTimeout(startup);
+          u.onend = () => finish("ended");
+          u.onerror = () => finish("error");
+          startup = setTimeout(() => finish("error"), 1000);
+          speechSynthesis.speak(u);
+        } catch (_) { finish("error"); }
+      };
+      const file = useRecordedVoice() && recordedClips[text];
+      if (!file) { native(); return; }
       try {
-        speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(text);
-        u.rate = 1.05;
-        const v = localVoices().find(x => x.name === localVoice.voice);
-        if (v) u.voice = v;
-        u.onstart = () => clearTimeout(startup);
-        u.onend = () => finish("ended");
-        u.onerror = () => finish("error");
-        startup = setTimeout(() => finish("error"), 1000);
-        speechSynthesis.speak(u);
-      } catch (_) { finish("error"); }
+        if ("speechSynthesis" in window) speechSynthesis.cancel();
+        const a = clip = new window.Audio("./assets/voice/" + file);
+        const fallback = () => { if (clip === a && !settled) native(); };
+        a.onplaying = () => { if (clip === a) clearTimeout(startup); };
+        a.onended = () => { if (clip === a) finish("ended"); };
+        a.onerror = fallback;
+        startup = setTimeout(fallback, 800);
+        Promise.resolve(a.play()).catch(fallback);
+      } catch (_) { native(); }
     });
     Voice.latest = p;
     return p;

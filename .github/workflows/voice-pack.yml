@@ -1,0 +1,42 @@
+name: Generate Switch Cab voice pack
+on:
+  push:
+    branches: [feature/natural-voice]
+    paths: ['tools/voice-phrases.json', 'tools/generate-voice.py', '.github/workflows/voice-pack.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: switchcab-voice-pack-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  generate:
+    if: github.ref == 'refs/heads/feature/natural-voice'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install offline-generation dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y espeak-ng ffmpeg libsndfile1
+          python -m pip install 'torch' --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install 'kokoro==0.9.4' soundfile
+      - name: Generate British voice pack
+        run: python tools/generate-voice.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: switchcab-emma-voice-pack
+          path: assets/voice/
+      - name: Commit generated audio to feature branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/voice/
+          if ! git diff --cached --quiet; then
+            git commit -m "Generate Emma Kokoro voice recordings"
+            git push origin HEAD:feature/natural-voice
+          fi

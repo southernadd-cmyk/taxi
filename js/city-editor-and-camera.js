@@ -368,7 +368,7 @@ function blankLevel() {
 }
 function openEditor(lv, isNew) {
   clearRoadworks();
-  ed = { dirty: isNew };
+  ed = { dirty: isNew, undo: [] };
   buildLevel(lv);
   spawnTraffic();
   mode = "editor";
@@ -417,6 +417,7 @@ function editRoot(arg) {
       say: "Theme: " + P.name,
       act: () => {
         const k = Object.keys(PALETTES);
+        rememberEdit("Theme to " + PALETTES[k[(k.indexOf(level.theme) + 1) % k.length]].name);
         level.theme = k[(k.indexOf(level.theme) + 1) % k.length];
         ed.dirty = true;
         buildLevel(level);
@@ -425,6 +426,7 @@ function editRoot(arg) {
         editRoot({ keep: "theme" });
       },
     },
+    editorUndoItem(),
     {
       id: "test",
       label: "🚗 Test drive",
@@ -435,7 +437,9 @@ function editRoot(arg) {
         start("cruise", null, ed.draft);
       },
     },
-    { id: "save", label: "💾 Save", say: "Save city", act: saveCity },
+    { id: "save", label: "💾 Save", say: "Save city", act: () => {
+      if (saveCity()) { editRoot({ keep: "save" }); Voice.speak(level.name + " saved. Undo history cleared."); }
+    } },
     { id: "done", label: "✅ Done", say: "Done. Leave the editor.", act: leaveEditor },
   ];
   $("#bar").classList.remove("hide");
@@ -448,6 +452,26 @@ function editRoot(arg) {
   }
   resize();
 }
+// Undo is local to this editing session and to changes since the last save.
+function rememberEdit(description) {
+  (ed.undo ||= []).push({ description, city: JSON.parse(JSON.stringify(level)), dirty: ed.dirty });
+  if (ed.undo.length > 30) ed.undo.shift();
+}
+function editorUndoItem() {
+  const last = ed.undo?.[ed.undo.length - 1];
+  return { id: "undo", label: last ? "↩️ Undo: " + last.description : "↩️ Undo (no changes)",
+    say: last ? "Undo " + last.description : "Undo. No changes to undo.",
+    act: undoEditorChange };
+}
+function undoEditorChange() {
+  const last = ed.undo?.pop();
+  if (!last) { Voice.speak("No changes to undo since the last save."); return; }
+  buildLevel(last.city);
+  spawnTraffic();
+  ed.dirty = last.dirty;
+  editRoot({ keep: "undo" });
+  Voice.speak("Undone: " + last.description + ". " + (ed.undo.length ? ed.undo.length + " more changes can be undone." : "No more changes to undo."));
+}
 function saveCity() {
   const list = customLevels();
   const data = validateCity(level);
@@ -458,6 +482,7 @@ function saveCity() {
   if (!persistCities(list)) { Voice.speak("Could not save city. Storage may be full. Your changes are still here."); return false; }
   level.id = data.id;
   ed.dirty = false;
+  ed.undo = [];
   sfx("score");
   Voice.speak(level.name + " saved.");
   return true;
@@ -528,6 +553,8 @@ function pickType(i, row, c) {
     focus: v.icon + "  " + v.name.toUpperCase(),
     say: v.name,
     act: () => {
+      if (level.blocks[i] === k) { Voice.speak("This block is already " + v.name + "."); pickBlock(row, "b" + c); return; }
+      rememberEdit("Row " + (row + 1) + ", block " + (c + 1) + " to " + v.name);
       if (v.unique) {
         const j = level.blocks.indexOf(k);
         if (j >= 0 && j !== i) {
@@ -557,6 +584,8 @@ function pickNode(row, kind, keep) {
       hl: () => hlAt(c * NODE, row * NODE, ROAD, ROAD, 2, "JUNCTION " + (c + 1)),
       act: () => {
         if (kind === "start") {
+          if (level.start[0] === c && level.start[1] === row) { editRoot({ keep: "start" }); Voice.speak("The cab already starts here."); return; }
+          rememberEdit("Cab start to row " + (row + 1) + ", junction " + (c + 1));
           level.start = [c, row];
           ed.dirty = true;
           sfx("score");
@@ -603,6 +632,8 @@ function pickGoodie(c, row, d) {
     focus: v.icon + "  " + v.name.toUpperCase(),
     say: v.name,
     act: () => {
+      if (level.segs[k] === g) { Voice.speak("This road already has " + v.name + "."); pickDir(c, row, "d" + d); return; }
+      rememberEdit(v.name + " on " + DNAME[d] + " road, row " + (row + 1) + ", junction " + (c + 1));
       level.segs[k] = g;
       buildGoodie(k);
       ed.dirty = true;
@@ -617,6 +648,8 @@ function pickGoodie(c, row, d) {
     focus: "❌  NOTHING",
     say: "Nothing. Clear this road.",
     act: () => {
+      if (!level.segs[k]) { Voice.speak("This road is already empty."); pickDir(c, row, "d" + d); return; }
+      rememberEdit("Clear " + DNAME[d] + " road, row " + (row + 1) + ", junction " + (c + 1));
       delete level.segs[k];
       buildGoodie(k);
       ed.dirty = true;

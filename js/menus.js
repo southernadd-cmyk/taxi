@@ -97,6 +97,7 @@ function titleMenu(keepId) {
       say: "Paint shop. Buy new colours for your cab.",
       act: openGarage,
     },
+    { id: "achievements", label: "🏆 Achievements", say: "Achievements. Hear your progress and unlock requirements.", act: () => achievementsMenu() },
     { id: "editor", label: "🏗️  City editor", say: "City editor. Build your own city.", act: editorMenu },
     { id: "how", label: "❓  How to Play", say: "How to play", act: () => howTo(titleMenu) },
     { id: "settings", label: "⚙️  Settings", say: "Settings", act: () => settingsMenu(() => titleMenu("settings")) },

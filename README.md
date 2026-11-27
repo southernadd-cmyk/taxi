@@ -10,7 +10,7 @@ Version 1.0 is the first feature-complete edition. Further updates will focus on
 
 ## Screenshots
 
-Captured directly from the v1.0 game in a desktop browser. The driving screenshots demonstrate both the standard camera and the reduced-motion accessibility mode.
+Captured directly from the v1.0 game in a desktop browser. The driving screenshots demonstrate both the standard camera and the reduced-motion accessibility mode, captured with high graphics enabled.
 
 ### Driving camera comparison
 

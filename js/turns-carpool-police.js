@@ -1529,7 +1529,7 @@ function loop(now) {
       const sp = SPEEDS[game.speed] * dt * (turn && turn.nitro ? 1.9 : 1);
       car.p += sp;
       rate = (turn && turn.nitro) || jump ? 1 : 0.6;
-      npcs.forEach((n) => stepWalker(n, sp * 0.8, wander));
+      if (!RM) npcs.forEach((n) => stepWalker(n, sp * 0.8, wander));
       segmentEvents();
       const tp = turn ? Math.min(1, (turn.seg + Math.min(1, car.p)) / turn.segs) : 0;
       cops.forEach((c) => {
@@ -1589,7 +1589,7 @@ function loop(now) {
   }
   npcs.forEach((n, i) => {
     place(npcMeshes[i], n);
-    npcMeshes[i].userData.wheels.forEach((w) => (w.rotation.x -= dt * 6));
+    if (!RM) npcMeshes[i].userData.wheels.forEach((w) => (w.rotation.x -= dt * 6));
   });
   const flip = game.flash && !RM ? ((now / 500) | 0) % 2 : 0;
   cops.forEach((c, i) => {

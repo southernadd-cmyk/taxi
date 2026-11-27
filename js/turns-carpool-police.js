@@ -301,7 +301,7 @@ function guidance(full) {
     s +=
       " On board: " +
       shift.onboard
-        .map((p, i) => `${i + 1}, ${p.destName}${p.patience != null ? ", " + urgency(p) + " spare" : ""}`)
+        .map((p, i) => `${i + 1}, ${p.destName}${p.patience != null ? ", " + urgency(p) + " spare" : ""}${p.dare ? ". Dare: " + dareGoal(p.dare) + ". " + Math.min(p.dare.have, p.dare.need) + " of " + p.dare.need + " complete" : ""}`)
         .join(". ") +
       ".";
   return s.trim();
@@ -1034,44 +1034,61 @@ function pickUp(w) {
   }
   return line + (p.patience != null ? ` You have ${p.patience} moves.` : "");
 }
+function dareGoal(dare) {
+  switch (dare.type) {
+    case "ramp": return "Hit two stunt ramps";
+    case "coins": return "Collect ten coins";
+    case "smash": return "Smash two lots of crates or cones";
+    case "visit": return "Drive past " + (["Pizza Palace", "the City Museum", "the Hideout"].includes(dare.place) ? dare.place : "the landmark");
+    default: return "Complete the dare";
+  }
+}
+function dareStatus(dare) {
+  return dareGoal(dare) + " · " + Math.min(dare.have, dare.need) + "/" + dare.need;
+}
 function offerDare(carry) {
   const { p, dare } = pendingDares[0];
   tip(
     "dare",
     "A dare is optional. Accept it, and the passenger pays double if you do it, or half if you do not. Say no and you get the normal fare.",
   );
-  carry = (carry || "") + " " + takeTips();
+  const goal = dareGoal(dare);
+  const challenge = "Passenger dare: " + dare.text + " Complete it for double the base fare. If you accept but fail, you get half the base fare. Decline for the normal fare.";
+  const extra = [carry, takeTips()].filter(Boolean).join(" ");
   const items = [
     {
       id: "no",
-      label: "❌  No thanks",
-      say: "No thanks",
+      label: "❌ No thanks — normal fare",
+      say: "No thanks. Keep the normal fare.",
       act: () => {
         pendingDares.shift();
-        Voice.speak("Fair enough.");
-        next();
+        saveGame();
+        next("Dare declined. Normal fare.");
       },
     },
     {
       id: "yes",
-      label: "✅  Accept the dare",
-      say: "Accept the dare",
+      label: "✅ Accept the dare — " + goal,
+      say: "Accept the dare. " + dare.text + " Double base fare if completed, half if not.",
       act: () => {
         pendingDares.shift();
         p.dare = dare;
         sfx("combo");
-        Voice.speak("Dare accepted!");
         updateHud();
-        next();
+        saveGame();
+        next("Dare accepted. " + goal + " before dropping off the passenger.");
       },
     },
+    {
+      id: "repeat",
+      label: "🔊 Hear dare again",
+      say: "Hear dare again",
+      act: () => Voice.speak(challenge),
+    },
   ];
-  const next = () => (pendingDares.length ? offerDare("") : openJunction(game.guide ? guidance() : ""));
+  const next = feedback => (pendingDares.length ? offerDare(feedback) : openJunction([feedback, game.guide ? guidance() : ""].filter(Boolean).join(" ")));
   updateHud();
-  showBar(
-    items,
-    (carry ? carry + " " : "") + "Dare! " + dare.text + " Do it and I pay double. Fail and I pay half.",
-  );
+  showBar(items, [challenge, extra].filter(Boolean).join(" "), challenge);
 }
 function dareProgress(kind) {
   if (!shift) return;
@@ -1365,7 +1382,7 @@ function updateHud() {
         pct = p.patience == null ? 100 : Math.max(0, Math.min(100, (u / Math.max(sp, 1)) * 100));
       const cls = p.patience == null ? "ok" : u <= 1 ? "bad" : u <= 2 ? "warn" : "ok";
       return (
-        `<div class="seat ${cls}"><span class="num">${i + 1}</span><b>${shortName(p.destName)}</b>${p.getaway ? '<span class="tagx red">🚨 GETAWAY</span>' : ""}${D ? `<span class="tagx">🎲 ${Math.min(D.have, D.need)}/${D.need}</span>` : ""}` +
+        `<div class="seat ${cls}"><span class="num">${i + 1}</span><b>${shortName(p.destName)}</b>${p.getaway ? '<span class="tagx red">🚨 GETAWAY</span>' : ""}${D ? `<span class="tagx">🎲 ${dareStatus(D)}</span>` : ""}` +
         (p.patience != null
           ? `<span class="pbar"><span style="width:${pct}%"></span></span><span class="spare">${u} spare</span>`
           : "") +

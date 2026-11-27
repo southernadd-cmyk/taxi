@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
   const browser = await chromium.launch({args:["--enable-webgl","--use-gl=angle","--use-angle=swiftshader","--enable-unsafe-swiftshader","--no-sandbox"]});
   let page;
   try {
-    page = await browser.newPage({viewport:{width:1280,height:800},reducedMotion:"reduce"});
+    page = await browser.newPage({viewport:{width:1024,height:640},reducedMotion:"reduce"});
     const errors = [];
     page.on("pageerror",e=>errors.push(e.message));
     await page.addInitScript(()=>{
@@ -18,6 +18,9 @@ const assert = require("node:assert/strict");
     const opt = name=>click("#opts",name);
     await page.locator("#menuList button").first().waitFor({timeout:90000});
     assert.equal(await page.locator("#noGL").isVisible(),false,"WebGL required");
+    // Test-only speedup through real animation and normal arrival logic.
+    const accelerateDrive=()=>page.evaluate(()=>{SPEEDS[2]=3;});
+    await accelerateDrive();
     // New standalone session: complete practice with only Enter presses.
     const select = async (label,scope) => {
       const button=page.locator(scope+" .opt.on").filter({hasText:label});
@@ -45,6 +48,7 @@ const assert = require("node:assert/strict");
     await opt("Done. Leave the editor");
     await page.reload({waitUntil:"domcontentloaded"});
     await page.locator("#menuList button").first().waitFor({timeout:90000});
+    await accelerateDrive();
     await menu("City editor");await menu("Edit "+city.name);
     assert.equal(await page.evaluate(()=>level.blocks[63]),"P");
     assert.deepEqual(await page.evaluate(()=>level.start),[8,8]);

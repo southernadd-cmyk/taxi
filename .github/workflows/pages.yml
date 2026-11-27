@@ -43,14 +43,24 @@ jobs:
           head=$(jq -r --arg sha "$GITHUB_SHA" '[.[] | select(.merged_at != null and .merge_commit_sha == $sha and .base.ref == "main")][0].head.sha // empty' <<< "$pulls")
           if [[ -z "$pr" || -z "$head" ]]; then exit 0; fi
           if ! runs=$(gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/pages.yml/runs" -f event=pull_request -f head_sha="$head" -f status=success -f per_page=20); then exit 0; fi
-          run=$(jq -r --arg head "$head" --argjson pr "$pr" '[.workflow_runs[] | select(.head_sha == $head and .conclusion == "success" and any(.pull_requests[]?; .number == $pr))][0].id // empty' <<< "$runs")
-          if [[ -z "$run" ]]; then exit 0; fi
-          dir=$(mktemp -d)
-          if ! gh run download "$run" --repo "$GITHUB_REPOSITORY" --name verified-tree --dir "$dir"; then exit 0; fi
-          if [[ -f "$dir/verified-tree.txt" ]] && [[ "$(cat "$dir/verified-tree.txt")" == "$(git rev-parse 'HEAD^{tree}')" ]]; then
-            echo "Exact tree already passed browser CI in PR #$pr (run $run)."
-            echo "verified=true" >> "$GITHUB_OUTPUT"
-          fi
+          # GitHub may omit pull_requests after merging. Verify the PR identity
+          # recorded by the successful workflow instead, as well as its exact tree.
+          candidates=$(jq -r --arg head "$head" '[.workflow_runs[] | select(.head_sha == $head and .event == "pull_request" and .conclusion == "success")] | .[].id' <<< "$runs")
+          tree=$(git rev-parse 'HEAD^{tree}')
+          expected=$(printf '%s\n%s' "$pr" "$head")
+          for run in $candidates; do
+            dir=$(mktemp -d)
+            if gh run download "$run" --repo "$GITHUB_REPOSITORY" --name verified-tree --dir "$dir" &&
+               [[ -f "$dir/verified-pr.txt" && -f "$dir/verified-tree.txt" ]] &&
+               [[ "$(cat "$dir/verified-pr.txt")" == "$expected" ]] &&
+               [[ "$(cat "$dir/verified-tree.txt")" == "$tree" ]]; then
+              echo "Exact tree already passed browser CI in PR #$pr (run $run)."
+              echo "verified=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            rm -rf "$dir"
+          done
+          echo "No matching verified PR artifact; running browser checks."
       - name: Cache Chromium headless shell
         if: steps.reuse.outputs.verified != 'true'
         uses: actions/cache@v4
@@ -70,12 +80,19 @@ jobs:
           node tests/browser-smoke.cjs
       - name: Record verified PR tree
         if: github.event_name == 'pull_request'
-        run: git rev-parse 'HEAD^{tree}' > "$RUNNER_TEMP/verified-tree.txt"
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git rev-parse 'HEAD^{tree}' > "$RUNNER_TEMP/verified-tree.txt"
+          printf '%s\n%s\n' "$PR_NUMBER" "$PR_HEAD" > "$RUNNER_TEMP/verified-pr.txt"
       - uses: actions/upload-artifact@v4
         if: github.event_name == 'pull_request'
         with:
           name: verified-tree
-          path: ${{ runner.temp }}/verified-tree.txt
+          path: |
+            ${{ runner.temp }}/verified-tree.txt
+            ${{ runner.temp }}/verified-pr.txt
           retention-days: 14
           if-no-files-found: error
       - uses: actions/upload-artifact@v4

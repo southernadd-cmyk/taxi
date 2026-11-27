@@ -2,8 +2,9 @@ const { chromium } = require("playwright");
 const assert = require("node:assert/strict");
 (async () => {
   const browser = await chromium.launch({args:["--enable-webgl","--use-gl=angle","--use-angle=swiftshader","--enable-unsafe-swiftshader","--no-sandbox"]});
+  let page;
   try {
-    const page = await browser.newPage({viewport:{width:1280,height:800},reducedMotion:"reduce"});
+    page = await browser.newPage({viewport:{width:1280,height:800},reducedMotion:"reduce"});
     const errors = [];
     page.on("pageerror",e=>errors.push(e.message));
     await page.addInitScript(()=>{
@@ -70,9 +71,17 @@ const assert = require("node:assert/strict");
     // consume a normal turn and fuel, then return control at the destination.
     const fixture=await page.evaluate(()=>{
       shift.onboard=[]; clearWaiting(); clearCops(); clearRival();
-      game.nav=0; game.diff=0; heat=0; nitroArmed=false;
-      clearRoadworks(); Object.assign(car,{x:1,y:1,d:1,ang:-Math.PI/2});
-      for(let x=1;x<4;x++) delete goodies[edgeKey(x,1,1)];
+      game.nav=0; game.diff=0; game.cops=0; heat=0; nitroArmed=false;
+      shift.level=1; pendingDares=[]; combo=0; rand=rng(1729);
+      clearRoadworks(); Object.assign(car,{x:1,y:1,d:1,p:0,moving:false,ang:-Math.PI/2});
+      // Isolate the corridor from random events and stale scenery.
+      for(const key of Object.keys(goodies)){
+        city.remove(goodies[key].g); delete goodies[key];
+      }
+      // Preserve the real animation/arrival path but avoid software-WebGL
+      // frame rate making three ordinary blocks exceed the wall-clock budget.
+      window.quickOriginalSpeed=SPEEDS[game.speed];
+      SPEEDS[game.speed]=2.4;
       const w={id:"quick-test",x:4,y:1,dest:[6,6],destName:"the park",pay:100,size:"SHORT",col:0x3ccf6a};
       makeWaitingVisual(w);waiting.push(w);targetPick=w;shift.fuel=40;
       // Keep deterministic waiting passengers so no spawn can interrupt.
@@ -84,7 +93,12 @@ const assert = require("node:assert/strict");
     assert.equal(fixture.length,3,JSON.stringify(fixture));
     assert.equal(fixture.items[0].id,"quickRoute",JSON.stringify(fixture));
     await page.locator("#opts").getByRole("button",{name:/^GPS shortcut\. straight on, 3 blocks/i}).click({timeout:10000});
-    await page.waitForFunction(()=>!car.moving && car.x===4 && car.y===1 && turnNo===window.quickStartTurn+3,{},{timeout:30000});
+    await page.waitForFunction(()=>!car.moving && turnNo>window.quickStartTurn,{},{timeout:30000});
+    const arrived=await page.evaluate(()=>{
+      SPEEDS[game.speed]=window.quickOriginalSpeed;
+      return {x:car.x,y:car.y,turns:turnNo-window.quickStartTurn,fuel:shift.fuel};
+    });
+    assert.deepEqual(arrived,{x:4,y:1,turns:3,fuel:37},"GPS shortcut must complete all three normal turns");
     await page.locator("#opts").getByRole("button",{name:/Pick up/}).waitFor({timeout:10000});
     assert.equal(await page.evaluate(()=>shift.fuel),37);
     assert.equal(await page.locator("#opts").getByRole("button",{name:/Pick up/}).count(),1);
@@ -110,5 +124,23 @@ const assert = require("node:assert/strict");
     assert.deepEqual(errors,[],"uncaught browser errors");
     await page.screenshot({path:"browser-smoke.png"});
     console.log("Browser smoke: Enter-only practice, city edit/save/test/reload passed.");
+  } catch(e) {
+    if(page){
+      try {
+        console.error("Browser state:",JSON.stringify(await page.evaluate(()=>({
+          mode:typeof mode==="undefined"?null:mode,
+          modeKey:typeof modeKey==="undefined"?null:modeKey,
+          car:typeof car==="undefined"?null:car,
+          turnNo:typeof turnNo==="undefined"?null:turnNo,
+          quickStartTurn:window.quickStartTurn,
+          quick:typeof turn==="undefined"||!turn?.quick?null:{d:turn.quick.d,remaining:turn.quick.remaining,destination:turn.quick.destination},
+          fuel:typeof shift==="undefined"?null:shift?.fuel,
+          menu:document.querySelector("#menuTitle")?.textContent,
+          choices:document.querySelector("#opts")?.innerText
+        }))));
+      } catch(diagnosticError){ console.error("State capture failed:",diagnosticError.message); }
+      try {await page.screenshot({path:"browser-smoke.png",timeout:5000});} catch(diagnosticError){ console.error("Screenshot failed:",diagnosticError.message); }
+    }
+    throw e;
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});

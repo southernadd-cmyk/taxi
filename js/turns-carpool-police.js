@@ -7,21 +7,35 @@ const MODES = {
   cruise: { name: "Cruise", roam: true },
   practice: { name: "Driving practice" },
 };
-const PICKUP_LINES = [
-  "Take me to {d}, and step on it!",
-  "{d}, please. I am late!",
-  "Hey cabbie! {d}. Make it exciting!",
-  "{d}. And do not spare the horses!",
-  "Quick! {d}! My soup is getting cold.",
-  "{d}. I hear you are the best in town.",
+// Dialogue is cosmetic: exactly the same random draws as the original
+// pickup and drop-off lines, so daily challenge and fare mechanics are unchanged.
+const PASSENGER_VOICES = [
+  {id:"friendly",pickup:["Hello, driver!","Glad you stopped.","Lovely to see a cab."],thanks:["Much appreciated!","Thanks for the lift.","Lovely ride!"]},
+  {id:"quiet",pickup:["Hello.","Thanks for stopping.","Just a lift, please."],thanks:["Thank you.","Cheers, driver.","That's great, thanks."]},
+  {id:"chatty",pickup:["What a busy city!","Nice cab!","I've been looking for a taxi."],thanks:["I'll remember this cab!","What a trip!","See you around!"]},
+  {id:"practical",pickup:["Right, let's get going.","Ready when you are.","Good, a taxi."],thanks:["That's my stop.","Made it, thanks.","Job done, cheers."]},
+  {id:"cheerful",pickup:["Perfect timing!","Hello there!","Off we go!"],thanks:["Brilliant, thank you!","Five stars from me!","Have a good shift!"]},
 ];
-const THANKS = [
-  "Wow! What a ride!",
-  "Best cab in the city!",
-  "Keep the change.",
-  "I am never taking the bus again.",
-  "My hair is a mess. Five stars!",
-];
+function passengerVoice(p) {
+  return PASSENGER_VOICES.find(v=>v.id===p.voice)||PASSENGER_VOICES[0];
+}
+function assignPassengerVoice(p, sample) {
+  const slot=Math.min(PASSENGER_VOICES.length*3-1,Math.max(0,Math.floor(sample*PASSENGER_VOICES.length*3)));
+  p.voice=PASSENGER_VOICES[Math.floor(slot/3)].id;
+  return passengerVoice(p).pickup[slot%3];
+}
+function passengerPickupLine(p, sample) {
+  const intro=p.getaway ? "The police are after me!" : assignPassengerVoice(p,sample);
+  return intro+" "+p.destName+", please. Base fare: "+p.pay+" dollars. "+
+    (p.patience==null?"No time limit.":"You have "+p.patience+" moves.");
+}
+function passengerDropLine(p, sample) {
+  if(p.getaway)return "Made it to the Hideout.";
+  if(p.dare&&p.dare.have<p.dare.need)return "We're here, but the dare wasn't completed.";
+  if(p.dare&&p.dare.have>=p.dare.need)return "You did the dare!";
+  const bank=passengerVoice(p).thanks;
+  return bank[Math.min(bank.length-1,Math.max(0,Math.floor(sample*bank.length)))];
+}
 const SEATS = 3,
   MAX_STRIKES = 3,
   SPOT = [0, 2, 3];
@@ -1061,9 +1075,7 @@ function pickUp(w) {
     "Your cab has three seats. Each passenger gives you a number of moves. If they run out, they walk out and you get a strike. You can pick up more people on the way, but plan the order you drop them off.",
   );
   if (!seatsFree()) tip("full", "Your cab is full. Drop someone off before you pick up anyone else.");
-  const line = getaway
-    ? "Drive! The cops are after me! Get me to the Hideout!"
-    : cap(PICKUP_LINES[Math.floor(rand() * PICKUP_LINES.length)].replace("{d}", p.destName));
+  const line = passengerPickupLine(p, getaway ? 0 : rand());
   if (getaway) {
     heat = Math.max(heat, 3);
     startChase(2 + (game.cops === 2 && shift.level >= 6 ? 1 : 0));
@@ -1095,7 +1107,7 @@ function pickUp(w) {
       pendingDares.push({ p, dare });
     }
   }
-  return line + (p.patience != null ? ` You have ${p.patience} moves.` : "");
+  return line;
 }
 function dareGoal(dare) {
   switch (dare.type) {
@@ -1213,7 +1225,7 @@ function dropOff(p) {
   sfx("win");
   burst(car.x * NODE, 3, car.y * NODE, [0xffd23f, 0xff4fa3, 0x2ad1c9, 0xffffff], 50, 14);
   banner("Fare paid", "+$" + pay);
-  let s = THANKS[Math.floor(rand() * THANKS.length)] + note + ` Plus ${pay} dollars.`;
+  let s = passengerDropLine(p, rand()) + note + ` Plus ${pay} dollars.`;
   if (p.getaway && !shift.onboard.some((x) => x.getaway) && heat >= 3) {
     heat = 0;
     calmCops();
@@ -1251,7 +1263,7 @@ function walkOut(p) {
   const lost = shift.streak >= 2;
   shift.streak = 0;
   return (
-    `That is it, I will walk! A passenger going to ${p.destName} ran out of patience. Strike ${shift.strikes}.` +
+    `Passenger to ${p.destName} ran out of patience and left without paying. Strike ${shift.strikes}.` +
     (lost ? " Your streak is over." : "")
   );
 }

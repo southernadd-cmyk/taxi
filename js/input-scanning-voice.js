@@ -94,15 +94,14 @@ function localVoices() {
 }
 // Static, generated recordings. No neural inference or third-party requests in play.
 const recordedVoiceId = "__kokoro_emma__";
-let recordedClips = Object.create(null);
-if (!window.NarbeVoiceManager && typeof window.fetch === "function" && typeof window.Audio === "function") {
-  window.fetch("./assets/voice/manifest.json").then(r => r.ok ? r.json() : null).then(m => {
-    if (!m || typeof m.clips !== "object" || !m.clips) return;
-    for (const [phrase, file] of Object.entries(m.clips)) {
-      if (typeof file === "string" && /^[a-f0-9]{16}\.mp3$/.test(file)) recordedClips[phrase] = file;
-    }
-  }).catch(() => {});
+const recordedClips = Object.create(null);
+// Load the tiny generated index synchronously before this script. No fetch race.
+if (!window.NarbeVoiceManager && typeof window.Audio === "function") {
+  for (const [phrase, file] of Object.entries(window.SwitchCabRecordedClips || {})) {
+    if (typeof file === "string" && /^[a-f0-9]{16}\.mp3$/.test(file)) recordedClips[phrase] = file;
+  }
 }
+let recordedAudio = null;
 function hasRecordedVoice() { return Object.keys(recordedClips).length > 0; }
 function useRecordedVoice() {
   return hasRecordedVoice() && (!localVoice.voice || localVoice.voice === recordedVoiceId);
@@ -184,7 +183,9 @@ const Voice = {
         if (finishLocalSpeech === finish) finishLocalSpeech = null;
         resolve(reason);
       };
-      cap = setTimeout(() => finish("timeout"), Math.min(10000, 600 + text.length * 70));
+      const file = !M && useRecordedVoice() && recordedClips[text];
+      // Short labels also need time for media startup and the native fallback.
+      cap = setTimeout(() => finish("timeout"), Math.min(10000, (file ? 3200 : 600) + text.length * 70));
       if (M && M.speak) {
         try {
           const ticket = M.speak(text);
@@ -215,16 +216,18 @@ const Voice = {
           speechSynthesis.speak(u);
         } catch (_) { finish("error"); }
       };
-      const file = useRecordedVoice() && recordedClips[text];
       if (!file) { native(); return; }
       try {
         if ("speechSynthesis" in window) speechSynthesis.cancel();
-        const a = clip = new window.Audio("./assets/voice/" + file);
+        // Reuse the same media element so user-gesture permission can persist.
+        const a = clip = recordedAudio || (recordedAudio = new window.Audio());
+        a.preload = "auto";
+        a.src = "./assets/voice/" + file;
         const fallback = () => { if (clip === a && !settled) native(); };
         a.onplaying = () => { if (clip === a) clearTimeout(startup); };
         a.onended = () => { if (clip === a) finish("ended"); };
         a.onerror = fallback;
-        startup = setTimeout(fallback, 800);
+        startup = setTimeout(fallback, 1600);
         Promise.resolve(a.play()).catch(fallback);
       } catch (_) { native(); }
     });

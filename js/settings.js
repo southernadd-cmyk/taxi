@@ -26,7 +26,8 @@ function settingsItems(back, category) {
     }),
     it("voice", "Voice: " + Voice.name(), () => {
       Voice.cycle();
-      setTimeout(() => Voice.speak("Voice: " + Voice.name()), 50);
+      // Play during the actual switch/click gesture, not a later timer.
+      Voice.speak("Voice: " + Voice.name());
     }),
     it("ui", "Text size: " + (game.ui ? "Huge" : "Large"), () => {
       game.ui = game.ui ? 0 : 1;

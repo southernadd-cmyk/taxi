@@ -45,3 +45,6 @@ See CREDITS.md for model licences.
 Copy the game directory into `bennyshub/apps/games/SWITCHCAB/` in the Hub repository (keep the js and assets directories). When served under `/bennyshub/`, it loads the Hub's shared platform, scan controller, voice and SafeAudio modules from the same origin. The standalone GitHub Pages version keeps local preferences; cross-origin browser storage cannot share settings with the Hub. Register the game in the Hub separately. No Hub repository files are modified by this project.
 
 Editor test drives never change cash, ranks or saved rides. City import validates the grid, theme, road items and starting point, and failed writes preserve the draft. Sharing codes remains a caregiver mouse/keyboard tool behind a warning.
+
+### Independent-play quality pass
+Cruise and Relaxed are genuinely police-free; difficulty is directly available before starting a shift. Help is divided into short spoken topics. Standalone switch cooldown starts on release, long Space releases resume a brake, and standalone parking/sensitivity settings are available. Hub central settings remain authoritative. Critical promotions and police warnings no longer use delayed narration that can interrupt scan labels.

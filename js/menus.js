@@ -24,10 +24,10 @@ function startNewShift(k, levelId, back) {
 function hideMenu() {
   $("#menu").classList.add("hide");
 }
-function showBar(items, speech) {
+function showBar(items, speech, keep, feedback) {
   $("#bar").classList.remove("hide");
   hints();
-  Scan.open(items, $("#opts"), speech);
+  Scan.open(items, $("#opts"), speech, keep, feedback);
   resize();
 }
 function exitGame() {
@@ -102,13 +102,18 @@ function titleMenu(keepId) {
 function shiftMenu(keepId) {
   showMenu(
     "Taxi shift",
-    "Three strikes and your shift is over.",
+    ["Relaxed: no fuel limit, police or impatient passengers.", "Normal: three strikes and your shift is over.", "Tough: tighter fares and faster rivals."][game.diff],
     [
       {
         id: "shift",
         label: "🚕  Shift: choose a city",
         say: "Taxi shift. Choose a city.",
         act: () => cityMenu("shift"),
+      },
+      {
+        id: "difficulty", label: "Difficulty: " + ["Relaxed","Normal","Tough"][game.diff],
+        say: "Difficulty: " + ["Relaxed","Normal","Tough"][game.diff] + ". Choose to change.",
+        act: () => { game.diff = (game.diff + 1) % 3; saveGameSettings(); shiftMenu("difficulty"); },
       },
       {
         id: "daily",
@@ -144,44 +149,30 @@ function cityMenu(k, keepId) {
   items.push({ id: "back", label: "⬅️  Back", say: "Back", act: k === "shift" ? () => shiftMenu("shift") : () => titleMenu("cruise") });
   showMenu("Choose a city", "", items, "Choose a city", keepId);
 }
-const HOW =
-  "You drive a taxi with three seats. The game moves in turns: every time you choose a way at a junction, your cab moves one block, every police car moves one block, and every passenger loses one move of patience. Nothing is timed. People waiting for a cab are labelled long, medium or short. Pick up to three, then plan the best order to drop them off. If a passenger runs out of patience, they walk out, and that is a strike. Three strikes ends your shift. Your cab also uses one fuel every move, and each drop-off refuels it, more for quick deliveries. On Relaxed there is no fuel limit. From level 3, patrol cars drive around the city. Get within a few moves of one and it spots you and gives chase. Police show their next move with red arrows, and a road marked police danger, with an alarm sound, will get you caught. Stay five moves away from every chasing car for two turns to lose them. Chasing cars sometimes stop to wait, which is your chance. Coins, ramps and crates earn tips, bigger with more passengers on board. Passengers may offer a dare for double pay. When you drop someone off, every other passenger still in the cab adds a quarter to the fare, and fares in a row without a strike build a streak. From level 2 a rival cab races you for waiting fares, with purple arrows showing its next move. Nitro moves you two blocks in one turn. Every three fares the city gets busier. Your cab also uses one fuel every move. Each drop-off refuels it, more for quick deliveries, so you cannot just hide from the police forever. Run out and the shift ends.";
+const HELP_TOPICS = [
+  ["Driving", "Choose a direction at each junction. The cab waits while you decide. GPS marks a suggested route. There is no need to rush."],
+  ["Passengers", "Collect up to three passengers. Follow GPS to their destinations. In Normal and Tough modes, watch each passenger's remaining moves and your fuel."],
+  ["Police and rivals", "Normal and Tough shifts have police and a rival cab. Avoid roads marked police danger. Stay five moves away from pursuing police for two turns to escape. Cruise and Relaxed have no police."],
+  ["Tips and dares", "Coins, ramps and crates earn tips. Accept a passenger's optional dare for double fare if completed, or half fare if missed. Nitro moves two blocks."],
+  ["Progress", "Earn money, unlock paint colours and beat your records. Cruise has no fail state. You can pause at every junction and return to the main menu."],
+];
 function howTo(back) {
-  showMenu(
-    "How to Play",
-    HOW,
-    [
-      { id: "practice", label: "🚕  Practise a fare", say: "Practise a fare", act: startPractice },
-      { id: "again", label: "🔊  Hear it again", say: "Hear it again", act: () => Voice.speak(HOW) },
-      {
-        id: "sounds",
-        label: "🎵  Hear the direction sounds",
-        say: "Hear the direction sounds",
-        act: demoSounds,
-      },
-      { id: "back", label: "⬅️  Back", say: "Back", act: back },
-    ],
-    HOW,
-  );
+  showMenu("How to play", "Choose a short topic, or practise a fare.", [
+    {id:"practice",label:"🚕 Practise a fare",say:"Practise a fare",act:startPractice},
+    ...HELP_TOPICS.map(([label,detail],j)=>({id:"help"+j,label,say:label,act:()=>showMenu(label,detail,[
+      {id:"again",label:"Hear again",say:"Hear again",act:()=>Voice.speak(detail)},
+      {id:"back",label:"Back to topics",say:"Back to topics",act:()=>howTo(back)}
+    ],detail)})),
+    {id:"sounds",label:"Hear direction sounds",say:"Hear direction sounds",act:()=>soundMenu(()=>howTo(back))},
+    {id:"back",label:"Back",say:"Back",act:back}
+  ],"How to play. Choose a topic or practise a fare.");
 }
-function demoSounds() {
-  const seq = [
-    ["straight", "Straight on"],
-    ["left", "Turn left"],
-    ["right", "Turn right"],
-    ["around", "Turn around"],
-    ["gps", "GPS way"],
-  ];
-  let p = Promise.resolve();
-  seq.forEach(([s, t]) => {
-    p = p
-      .then(() => {
-        sfx(s);
-        return new Promise((r) => setTimeout(r, 500));
-      })
-      .then(() => Voice.speak(t))
-      .then(() => new Promise((r) => setTimeout(r, 300)));
-  });
+function soundMenu(back) {
+  const seq=[["straight","Straight on"],["left","Turn left"],["right","Turn right"],["around","Turn around"],["gps","GPS way"]];
+  showMenu("Direction sounds","Choose a sound to hear it.",[
+    ...seq.map(([id,label])=>({id,label,say:label,act:()=>{sfx(id);Voice.speak(label)}})),
+    {id:"back",label:"Back",say:"Back",act:back}
+  ],"Direction sounds");
 }
 const CREDITS =
   "Taxi model by maregajavier, licensed CC BY 4.0.\nCity buildings, trees and lamps: Modular City Environment by Spicy_EJ, licensed CC BY 4.0.\nBoth from Sketchfab. Changes: resized, split into parts and recoloured.";

@@ -38,12 +38,12 @@ function earn(n) {
   saveProgress();
   updateHud();
   const after = rankOf(earned);
-  if (after !== before)
-    setTimeout(() => {
-      banner("Promoted!", after);
-      sfx("rank");
-      Voice.speak("Promoted! You are now " + (/^[AEIOU]/i.test(after) ? "an " : "a ") + after + ".");
-    }, 1500);
+  if (after !== before) {
+    banner("Promoted!", after);
+    sfx("rank");
+    const message = "Promoted! You are now " + (/^[AEIOU]/i.test(after) ? "an " : "a ") + after + ".";
+    if (turn && mode === "play" && turn.speech) turn.speech.push(message);
+  }
 }
 function applyUI() {
   document.documentElement.dataset.ui = game.ui;

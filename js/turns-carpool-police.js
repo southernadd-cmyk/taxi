@@ -719,7 +719,7 @@ function openJunction(speech, keep, feedback) {
   );
   if (!practice && game.wait && !acc().auto && g >= 0 && !danger(g))
     autoT = setTimeout(() => {
-      if (!acc().auto && Scan.index === -1 && !menuOpen() && mode === "play" && !car.moving) drive(g);
+      if (!document.hidden && !acc().auto && Scan.index === -1 && !menuOpen() && mode === "play" && !car.moving) drive(g);
     }, game.wait);
 }
 function nitroItem() {
@@ -1392,6 +1392,7 @@ function saveGame() {
   saveProgress();
   store("switchcity-game3", {
     modeKey,
+    difficulty: game.diff,
     levelId: level.id,
     ...(level.builtin ? {} : { citySnapshot: JSON.parse(JSON.stringify(level)) }),
     car: { x: car.x, y: car.y, d: car.d },

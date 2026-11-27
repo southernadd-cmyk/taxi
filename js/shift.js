@@ -153,6 +153,9 @@ function start(k, levelId, lvObj) {
   }
 }
 function resume(sg) {
+  if (Number.isInteger(sg.difficulty) && sg.difficulty >= 0 && sg.difficulty <= 2) {
+    game.diff = sg.difficulty; saveGameSettings();
+  }
   rand = Math.random;
   enterPlay(sg.modeKey, sg.levelId, sg.citySnapshot || null);
   Object.assign(car, {
@@ -180,7 +183,7 @@ function resume(sg) {
       rival.ang = (-rival.d * Math.PI) / 2;
     }
   }
-  (sg.cops || []).forEach((c) => {
+  (policeEnabled() ? sg.cops || [] : []).forEach((c) => {
     cops.push({
       x: c.x,
       y: c.y,

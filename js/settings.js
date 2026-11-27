@@ -12,7 +12,7 @@ function settingsItems(back) {
       settingsRefresh(back, id);
     },
   });
-  return [
+  const options = [
     it("tts", "Text to Speech: " + (Voice.enabled() ? "On" : "Off"), () => {
       Voice.toggle();
       if (Voice.enabled()) Voice.speak("Text to speech on");
@@ -191,6 +191,13 @@ function settingsItems(back) {
       },
     },
   ];
+  for (const option of options) {
+    if ((option.id === "wait" && a.auto) || ((option.id === "cam" || option.id === "flash") && RM) ||
+        (option.id === "diff" && mode === "play" && shift) ||
+        (["parking","brake","speechwait"].includes(option.id) && !a.auto) ||
+        (option.id === "parkloops" && (!a.auto || a.parking !== "auto"))) option.disabled = true;
+  }
+  return options;
 }
 function settingsRefresh(back, id) {
   resetArmed = false;

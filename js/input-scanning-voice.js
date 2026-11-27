@@ -581,11 +581,11 @@ function resetKeys() {
   for (const k in keyState) delete keyState[k];
   Scan.cancelInput();
 }
-addEventListener("blur", resetKeys);
+addEventListener("blur", () => { resetKeys(); if (typeof autoT !== "undefined") clearTimeout(autoT); });
 addEventListener("focusin", (e) => { if (e.target?.closest?.('textarea, input, select, [contenteditable]')) resetKeys(); });
 addEventListener("narbe-input-cancelled", resetKeys);
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden) resetKeys();
+  if (document.hidden) { resetKeys(); if (typeof autoT !== "undefined") clearTimeout(autoT); }
 });
 function hints() {
   const h = acc().auto

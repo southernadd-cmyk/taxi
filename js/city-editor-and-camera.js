@@ -3,7 +3,7 @@ scene.add(routeGroup);
 const routeMat = basic(0xff4fa3, { transparent: true, opacity: 0.9 });
 function buildRoute() {
   while (routeGroup.children.length) routeGroup.remove(routeGroup.children[0]);
-  const r = game.nav ? [] : routeNodes();
+  const r = game.nav && modeKey !== 'practice' ? [] : routeNodes();
   for (let i = 0; i < r.length - 1; i++) {
     const [ax, ay] = r[i],
       [bx, by] = r[i + 1];

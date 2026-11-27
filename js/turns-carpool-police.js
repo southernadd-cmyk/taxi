@@ -5,6 +5,7 @@ const MODES = {
   shift: { name: "Taxi shift" },
   daily: { name: "Daily challenge" },
   cruise: { name: "Cruise", roam: true },
+  practice: { name: "Driving practice" },
 };
 const PICKUP_LINES = [
   "Take me to {d}, and step on it!",
@@ -608,11 +609,12 @@ function danger(d) {
 
 /* ---------- a turn ---------- */
 function openJunction(speech) {
+  const practice = modeKey === 'practice';
   car.moving = false;
   clearTimeout(autoT);
   const t = target(),
     g = t ? routeDir(car.x, car.y, t[0], t[1], car.d) : -1,
-    gps = game.nav ? -1 : g;
+    gps = game.nav && !practice ? -1 : g;
   let opts = [0, 3, 1, 2].map((r) => ({ d: (car.d + r) % 4 })).filter((o) => canGo(car.x, car.y, o.d));
   opts.forEach((o) => {
     o.gps = o.d === gps;
@@ -620,11 +622,11 @@ function openJunction(speech) {
     o.goodie = gd && !gd.used ? gd.item : null;
     o.danger = danger(o.d);
   });
-  if (!game.nav) opts.sort((a, b) => b.gps - a.gps);
+  if (!game.nav || practice) opts.sort((a, b) => b.gps - a.gps);
   const items = opts.map((o) => {
     const W = DIRWORD[relName(o.d)],
       gi = o.goodie ? GOODIES[o.goodie] : null,
-      cmp = game.nav ? " (" + COMPASS[o.d] + ")" : "";
+      cmp = game.nav && !practice ? " (" + COMPASS[o.d] + ")" : "";
     return {
       id: "dir" + o.d,
       d: o.d,
@@ -646,7 +648,7 @@ function openJunction(speech) {
         (o.gps ? ", GPS way" : "") +
         (gi ? ", " + gi.name : "") +
         (o.danger ? ", police danger!" : ""),
-      html: `<span class="ar" aria-hidden="true">${W[3]}</span>${W[0]}${game.nav ? '<span class="tag">' + COMPASS[o.d].toUpperCase() + "</span>" : ""}${gi ? ' <span aria-hidden="true">' + gi.icon + "</span>" : ""}${o.danger ? ' <span class="tag" style="background:#ff2a40;color:#fff">POLICE</span>' : ""}${o.gps ? ' <span class="tag">GPS</span>' : ""}`,
+      html: `<span class="ar" aria-hidden="true">${W[3]}</span>${W[0]}${game.nav && !practice ? '<span class="tag">' + COMPASS[o.d].toUpperCase() + "</span>" : ""}${gi ? ' <span aria-hidden="true">' + gi.icon + "</span>" : ""}${o.danger ? ' <span class="tag" style="background:#ff2a40;color:#fff">POLICE</span>' : ""}${o.gps ? ' <span class="tag">GPS</span>' : ""}`,
       act: () => drive(o.d),
     };
   });
@@ -663,6 +665,7 @@ function openJunction(speech) {
           focus: "🙋  PICK UP  $" + w.pay,
           say: `Pick up. ${w.size.toLowerCase()} fare to ${w.destName}, ${w.pay} dollars, ${n} moves away${sp != null ? ", with " + sp + " spare" : ""}.`,
           act: () => {
+            if (practice) return practicePickup(w);
             const s = pickUp(w);
             spawnWaiting();
             refreshMarkers();
@@ -709,7 +712,7 @@ function openJunction(speech) {
       (shut.length ? " Road closed " + shut.join(" and ") + "." : "")
     ).trim() || null,
   );
-  if (game.wait && !acc().auto && g >= 0 && !danger(g))
+  if (!practice && game.wait && !acc().auto && g >= 0 && !danger(g))
     autoT = setTimeout(() => {
       if (!acc().auto && Scan.index === -1 && !menuOpen() && mode === "play" && !car.moving) drive(g);
     }, game.wait);
@@ -849,6 +852,7 @@ function endTurn() {
   arrive(caught);
 }
 function arrive(caught) {
+  if (modeKey === 'practice') return practiceArrive();
   const say = [...(turn ? turn.speech : [])];
   const add = (s) => {
     if (s) say.push(s);
@@ -1334,7 +1338,10 @@ function updateHud() {
   mm.style.visibility = mode === "editor" ? "hidden" : "visible";
   const mt = $("#missionText"),
     top = $("#modeName");
-  if (mode === "editor") {
+  if (modeKey === 'practice' && mode === 'play') {
+    top.textContent = 'DRIVING PRACTICE · ' + (shift.onboard.length ? '3 / 3' : waiting.some(w => nodeEq([w.x,w.y],car.x,car.y)) ? '2 / 3' : '1 / 3');
+    mt.textContent = practiceInstruction();
+  } else if (mode === "editor") {
     top.innerHTML = '<span class="chip">CITY EDITOR</span>';
     mt.innerHTML = '<div class="seat"><b>' + level.name + "</b></div>";
   } else if (!shift) {
@@ -1381,6 +1388,7 @@ function todayStr() {
   return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
 }
 function saveGame() {
+  if (modeKey === 'practice') return;
   saveProgress();
   if (mode !== "play" || testing) return;
   store("switchcity-game3", {

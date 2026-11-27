@@ -35,6 +35,7 @@ function exitGame() {
   );
 }
 function toMenuScene() {
+  if (modeKey === 'practice') { shift = null; modeKey = 'shift'; }
   resetMenuStyle();
   clearRoadworks();
   mode = "menu";
@@ -57,6 +58,7 @@ function titleMenu() {
       act: () => resume(sg),
     });
   items.push(
+    { id: "practice", label: "🚕  Learn to drive", say: "Learn to drive. Practise a fare with no pressure.", act: startPractice },
     {
       id: "shift",
       label: "🚕  Start a shift",
@@ -135,6 +137,7 @@ function howTo(back) {
     "How to Play",
     HOW,
     [
+      { id: "practice", label: "🚕  Practise a fare", say: "Practise a fare", act: startPractice },
       { id: "again", label: "🔊  Hear it again", say: "Hear it again", act: () => Voice.speak(HOW) },
       {
         id: "sounds",

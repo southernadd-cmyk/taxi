@@ -20,6 +20,9 @@ GitHub Pages works as is.
   `js/city-editor-and-camera.js`: progress, menus, settings, starting and saving shifts, the city editor,
   camera and route drawing
 
+## Driving practice
+Choose **Learn to drive** from the main menu. Follow GPS to a waiting passenger, pick them up, then deliver them to the park. Wrong turns are fine; there are no deadlines, police, fuel costs or penalties. Practice does not change your saved shift, cash or records. Pause, replay instructions, restart or leave at any junction.
+
 ## How a turn works
 Every junction is one turn. When the cab moves one block (two with nitro), every police car moves one
 block along the route it showed in advance, and every passenger loses one move of patience. Nothing

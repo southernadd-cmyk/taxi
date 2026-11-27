@@ -1,4 +1,5 @@
 function pauseMenu() {
+  if (modeKey === 'practice') return practicePause();
   restartArmed = false;
   clearTimeout(autoT);
   $("#bar").classList.add("hide");

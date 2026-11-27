@@ -72,7 +72,8 @@ jobs:
       - name: Prepare static site
         run: |
           mkdir -p _site
-          cp -r index.html js assets CREDITS.md LICENSE.txt _site/
+          cp -r index.html favicon.svg js assets CREDITS.md LICENSE.txt _site/
+          test -s _site/favicon.svg
           touch _site/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with:

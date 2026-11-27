@@ -210,6 +210,7 @@ function urgency(p) {
   return p.patience == null ? 99 : p.patience - moves(car.x, car.y, p.dest[0], p.dest[1]);
 }
 function currentTarget() {
+  if (modeKey === "practice" && shift?.practice) return advancedTarget();
   const t = targets();
   if (!t.length) return null;
   const keep = targetPick && t.find((x) => x.ref === targetPick);
@@ -670,7 +671,7 @@ function openJunction(speech) {
   clearTimeout(autoT);
   const t = target(),
     g = t ? routeDir(car.x, car.y, t[0], t[1], car.d) : -1,
-    gps = game.nav && !practice ? -1 : g;
+    gps = practice && shift?.practice?.kind === "police" ? practicePoliceDirection() : game.nav && !practice ? -1 : g;
   let opts = [0, 3, 1, 2].map((r) => ({ d: (car.d + r) % 4 })).filter((o) => canGo(car.x, car.y, o.d));
   opts.forEach((o) => {
     o.gps = o.d === gps;
@@ -721,7 +722,7 @@ function openJunction(speech) {
           label: "🙋 Pick up: " + shortName(w.destName) + (practice ? "" : " $" + w.pay),
           sound: "score",
           focus: practice ? "🙋  PICK UP" : "🙋  PICK UP  $" + w.pay,
-          say: practice ? "Pick up your passenger. No time limit." : `Pick up. ${w.size.toLowerCase()} fare to ${w.destName}, ${w.pay} dollars, ${n} moves away${sp != null ? ", with " + sp + " spare" : ""}.`,
+          say: practice ? "Pick up your passenger for " + w.destName + ". No time limit." : `Pick up. ${w.size.toLowerCase()} fare to ${w.destName}, ${w.pay} dollars, ${n} moves away${sp != null ? ", with " + sp + " spare" : ""}.`,
           act: () => {
             if (practice) return practicePickup(w);
             const s = pickUp(w);
@@ -734,7 +735,7 @@ function openJunction(speech) {
         });
       });
   if (shift && shift.nitro > 0) items.push(nitroItem());
-  if (targets().length > 1) items.push(targetItem());
+  if (!practice && targets().length > 1) items.push(targetItem());
   items.push({
     id: "pause",
     label: "⏸ Pause",
@@ -910,7 +911,7 @@ function endTurn() {
   arrive(caught);
 }
 function arrive(caught) {
-  if (modeKey === 'practice') return practiceArrive();
+  if (modeKey === 'practice') return practiceArrive(caught);
   const say = [...(turn ? turn.speech : [])];
   const add = (s) => {
     if (s) say.push(s);
@@ -1284,6 +1285,7 @@ function lostThem() {
   return "You lost the police! Plus 75 dollars.";
 }
 function collect(kind, amount) {
+  if (modeKey === "practice") return practiceCollect(kind);
   if (testing) return;
   const m = 1 + Math.min(4, combo) * 0.5,
     onb = shift ? Math.max(1, shift.onboard.length) : 1,
@@ -1419,7 +1421,7 @@ function updateHud() {
   const mt = $("#missionText"),
     top = $("#modeName");
   if (modeKey === 'practice' && mode === 'play' && shift) {
-    top.textContent = 'DRIVING PRACTICE · ' + (shift.onboard.length ? '3 / 3' : waiting.some(w => nodeEq([w.x,w.y],car.x,car.y)) ? '2 / 3' : '1 / 3');
+    top.textContent = practiceStageLabel();
     mt.textContent = practiceInstruction();
   } else if (mode === "editor") {
     top.innerHTML = '<span class="chip">CITY EDITOR</span>';
@@ -1457,7 +1459,7 @@ function updateHud() {
   }
   const hot = Math.max(heat, cops.some((c) => c.chasing) ? 3 : 0);
   $("#stars").textContent =
-    game.cops && mode === "play" && hot
+    (game.cops || (modeKey === "practice" && shift?.practice?.kind === "police")) && mode === "play" && hot
       ? "★".repeat(Math.min(5, hot)) + "☆".repeat(Math.max(0, 5 - hot))
       : "";
 }

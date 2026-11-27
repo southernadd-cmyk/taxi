@@ -49,7 +49,7 @@ const assert = require("node:assert/strict");
     assert.deepEqual(await page.evaluate(()=>level.start),[8,8]);
     // Trigger a known dare without relying on random passenger offers.
     await opt("Done. Leave the editor");
-    await menu("Back to main menu");
+    await page.locator("#menuList").getByRole("button",{name:"Back",exact:true}).click();
     await menu("Start a taxi shift");
     await menu("Taxi shift. Choose a city");
     await page.locator("#menuList button").first().click();

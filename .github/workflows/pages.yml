@@ -21,7 +21,7 @@ jobs:
           node-version: '22'
       - name: Regression tests
         run: |
-          for test in tests/{switch-input,speech-wait,recorded-voice,practice,visual-access,navigation,editor,editor-flow,dare,quick-route,advanced-practice}.cjs; do node "$test" || exit 1; done
+          for test in tests/{switch-input,speech-wait,single-voice,practice,visual-access,navigation,editor,editor-flow,dare,quick-route,advanced-practice}.cjs; do node "$test" || exit 1; done
           for script in js/*.js; do node --check "$script" || exit 1; done
   # Full real-browser acceptance remains available on demand. It is not a
   # publication gate: software WebGL timing has blocked already-tested fixes.
